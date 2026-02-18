@@ -21,6 +21,9 @@ pip install -e .
 
 # Start Neo4j database (required for most operations)
 cd docker
+Copy-Item .env.example .env
+
+# Open docker desktop
 docker compose up -d
 
 # Test database connection
@@ -41,7 +44,7 @@ python scripts/do_fix_size_chunking.py      # Fixed-size chunks
 python scripts/do_semantic_chunking.py      # Embedding-based chunking
 
 # 3. Ingest chunks into Neo4j graph
-python scripts/ingest_graph.py --chunk_dir data/chunks/asterisk_chunking_result
+python scripts/ingest_graph.py --chunk_dir data/chunks/asterisk_separate_chunking_result
 
 # 4. Run web interface
 streamlit run frontend/app.py

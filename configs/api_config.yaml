@@ -20,8 +20,6 @@ api_providers:
     base_url: "https://generativelanguage.googleapis.com"
     provider: "gemini"
 
-
-
 # Default API configuration
 default_provider: "gemini"
 
