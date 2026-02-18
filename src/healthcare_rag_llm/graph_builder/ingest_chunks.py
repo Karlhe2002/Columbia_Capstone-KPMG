@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 
 from healthcare_rag_llm.embedding.HealthcareEmbedding import HealthcareEmbedding
 from healthcare_rag_llm.graph_builder.neo4j_loader import Neo4jConnector
-
+from healthcare_rag_llm.embedding.HealthcareEmbedding import get_embedding_singleton
 
 def _parse_effective_date(value: Optional[str]) -> Optional[date]:
     """
@@ -114,7 +114,7 @@ def ingest_chunks(
     - Every chunk gets a denseEmbedding (for vector search)
     - Batch mode for stability/performance
     """
-    embedder = HealthcareEmbedding()
+    embedder = get_embedding_singleton() #HealthcareEmbedding()
     connector = Neo4jConnector()
 
     chunk_file = Path(jsonl_path)

@@ -1,5 +1,6 @@
 import streamlit as st
 from PIL import Image
+import traceback
 from pathlib import Path
 import sys
 from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
@@ -20,11 +21,14 @@ sys.path.append(str(SRC_DIR))  # allow import from src/
 # ============================================================
 try:
     from healthcare_rag_llm.llm.llm_client import LLMClient
-    #from healthcare_rag_llm.llm.response_generator import ResponseGenerator
-    from healthcare_rag_llm.llm.guardrail_response_wrapper import ResponseGenerator
+    from healthcare_rag_llm.llm.response_generator import ResponseGenerator
+    #from healthcare_rag_llm.llm.guardrail_response_wrapper import ResponseGenerator
     HAS_BACKEND = True
 except Exception as e:
+    
     HAS_BACKEND = False
+    st.exception(e)
+    st.code(traceback.format_exc())
     st.warning(f"⚠️ Backend import failed: {e}. Mock mode enabled.")
 
 # ============================================================
@@ -74,7 +78,7 @@ def load_rag_pipeline():
     api_config_default = api_config_manager.get_default_config()
     llm_client = LLMClient(
         api_key=api_config_default.api_key,  # API key
-        model="gpt-5",
+        model="gemini-2.5-flash",
         provider=api_config_default.provider,
         base_url=api_config_default.base_url
     )

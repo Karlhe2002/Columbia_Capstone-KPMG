@@ -19,6 +19,13 @@ from typing import Optional
 from FlagEmbedding import BGEM3FlagModel
 import torch
 
+_embedding_singleton = None
+def get_embedding_singleton():
+    global _embedding_singleton
+    if _embedding_singleton is None:
+        _embedding_singleton = HealthcareEmbedding()
+    return _embedding_singleton
+
 class HealthcareEmbedding:
     """
     BGE-M3 embedding model with automatic hardware detection.

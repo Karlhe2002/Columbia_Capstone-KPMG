@@ -14,12 +14,23 @@ api_providers:
     api_key: "your-anthropic-api-key"
     base_url: "https://api.anthropic.com"
     provider: "anthropic"
+  
+  gemini:
+    api_key: "AIzaSyAEJFjA8J5RvHcvKvyzcZpDcKYNhgjD2aI" 
+    base_url: "https://generativelanguage.googleapis.com"
+    provider: "gemini"
+
+
 
 # Default API configuration
-default_provider: "bltcy"
+default_provider: "gemini"
 
 # Model configuration
 models:
+  gemini-2.5-flash:
+    provider: "gemini"
+    max_tokens: 4000
+
   gpt-5:
     provider: "bltcy"
     max_tokens: 4000
