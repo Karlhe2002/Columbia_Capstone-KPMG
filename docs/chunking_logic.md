@@ -84,6 +84,33 @@ Intelligently merges text units based on cosine similarity of sentence-transform
 
 ---
 
+## 4. Section-Based Chunking
+
+**Source**: `src/healthcare_rag_llm/chunking/section_chunking.py`
+**Script**: `scripts/do_section_chunking.py`
+
+Splits a policy-guidelines TXT file at subsection boundaries identified from its Table of Contents.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `txt_path` | — | Path to the input TXT file |
+| `output_dir` | — | Output directory for JSONL chunks |
+| `doc_id` | `<stem>.pdf` | Document identifier for JSONL records |
+| `category` | `pharmacy` | Category tag for each chunk |
+| `max_chunk_chars` | 0 | Maximum chunk size; 0 = no limit (each section is one chunk) |
+
+**Process**:
+1. Read the TXT file and parse the Table of Contents to extract ordered section/subsection titles
+2. Locate the body text (after ToC pages)
+3. Clean page headers (`Policy Guidelines / NYRx`) and footers (`2025-3 October 2025 <page>`)
+4. Split body text at each ToC title boundary — each subsection becomes one chunk
+5. Estimate page numbers from footer markers in the original text
+6. If `max_chunk_chars` > 0, further split oversized sections by character count
+
+**Characteristics**: Structure-aware via ToC parsing. Best suited for policy manuals with a clear Table of Contents (e.g., Pharmacy Policy Guidelines).
+
+---
+
 ## Shared Features Across All Strategies
 
 ### Chunk Types
@@ -129,6 +156,7 @@ In `scripts/rebuild_db.py`, different document types use different strategies:
 |---------------|----------|----------------|
 | Medicaid Updates | Pattern-Based (asterisk) | `separator_char="*"`, `min_repeats=10`, `max_chunk_chars=1200` |
 | Children Waiver | Semantic | `threshold=0.55`, `unit="paragraph"`, `max_chunk_chars=1200` |
+| Pharmacy Policy Guidelines | Section-Based | `category="pharmacy"` |
 
 ### Commands
 
@@ -141,6 +169,9 @@ python scripts/do_asterisk_chunking.py --sep "*" --min-repeats 10 --max-chars 12
 
 # Semantic chunking
 python scripts/do_semantic_chunking.py --unit paragraph --threshold 0.55 --max-chars 1200
+
+# Section-based chunking (Pharmacy)
+python scripts/do_section_chunking.py --input data/processed/pharmacy/Pharmacy_Policy_Guidelines.txt --output data/chunks/section_chunking_result
 
 # Full pipeline (orchestrates all steps)
 python scripts/rebuild_db.py
@@ -155,6 +186,7 @@ python scripts/rebuild_db.py
 | **Fixed-Size** | Character count | Fastest | Basic | Generic documents, baseline |
 | **Pattern-Based** | Regex separators | Fast | Structure-aware | Documents with clear delimiters |
 | **Semantic** | Embedding similarity | Slow | Highest | Specialized healthcare content |
+| **Section-Based** | ToC title boundaries | Fast | Structure-aware | Policy manuals with clear ToC |
 
 ---
 

@@ -5,6 +5,7 @@ import os, shutil, subprocess
 from healthcare_rag_llm.pipelines.ingest_parse import run_pipeline as parse_pipeline
 from healthcare_rag_llm.chunking.pattern_chunking import asterisk_separate_chunking
 from healthcare_rag_llm.chunking.semantic_chunking import semantic_chunking
+from healthcare_rag_llm.chunking.section_chunking import section_chunking
 from healthcare_rag_llm.graph_builder.neo4j_loader import Neo4jConnector
 
 
@@ -17,6 +18,8 @@ OUT_MEDICAID = ROOT / "data" / "processed" / "medicaid update"
 
 RAW_WAIVER = ROOT / "data" / "raw" / "Childrens Evolution of Care" / "State" / "Waivers" / "Childrens Waiver"
 OUT_WAIVER = ROOT / "data" / "processed" / "children waiver"
+
+PHARMACY_TXT = ROOT / "data" / "processed" / "pharmacy" / "Pharmacy_Policy_Guidelines.txt"
 
 INGEST_GRAPH_SCRIPT = ROOT / "scripts" / "ingest_graph.py"
 METADATA_FILE = ROOT / "data" / "metadata" / "metadata_filled.csv"
@@ -80,6 +83,14 @@ def main():
         glob_pattern="*.json",
         hysteresis=0.02,
         verbose=True
+    )
+
+    # section chunk Pharmacy
+    section_chunking(
+        txt_path=str(PHARMACY_TXT),
+        output_dir=str(CHUNK_DIR),
+        category="pharmacy",
+        verbose=True,
     )
 
     # reset graph
