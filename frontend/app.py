@@ -280,11 +280,13 @@ with st.container():
             placeholder="e.g. When did redetermination begin for the COVID-19 Public Health Emergency unwind in New York State?",
         )
 
-        col1, col2 = st.columns([1, 1])
+        col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
             submitted = st.form_submit_button("📤 Submit", use_container_width=True)
         with col2:
             cleared = st.form_submit_button("🧹 Clear Chat", use_container_width=True)
+        with col3:
+            compare_submitted = st.form_submit_button("🔍 Compare Definitions", use_container_width=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -299,19 +301,29 @@ if cleared:
     st.rerun()
 
 # Submit logic
-if submitted:
+if submitted or compare_submitted:
     if not user_query.strip():
         st.warning("Please enter a question before submitting.")
     else:
         # st.session_state["history"].append({"role": "user", "content": user_query})
-        with st.spinner("Retrieving information..."):
+        with st.spinner("Comparing definitions..." if compare_submitted else "Retrieving information..."):
             try:
                 if rag_pipeline:
                     # --- Real backend ---
-                    result = rag_pipeline.answer_question(user_query, history=st.session_state["history"])
+                    if compare_submitted:
+                        result = rag_pipeline.answer_compare_definitions(
+                            user_query,
+                            concept=user_query,
+                        )
+                    else:
+                        result = rag_pipeline.answer_question(user_query, history=st.session_state["history"])
                     answer = result.get("answer", "No answer returned.")
                     evidence_dict = result.get("evidence_dict", {})
                     retrieved_docs = result.get("retrieved_docs", [])
+                    if compare_submitted and isinstance(retrieved_docs, dict):
+                        policy_docs = retrieved_docs.get("policy", []) or []
+                        provider_docs = retrieved_docs.get("provider_manual", []) or []
+                        retrieved_docs = policy_docs + provider_docs
                 else:
                     # --- Mock mode ---
                     answer = (

@@ -5,13 +5,6 @@ import argparse
 # parsing pipeline: expects only .pdf and .docx (from raw or interim)
 from healthcare_rag_llm.pipelines.ingest_parse import run_pipeline as parse_pipeline
 
-# scripts/ingestion_data.py
-from pathlib import Path
-import argparse
-
-# parsing pipeline: expects only .pdf and .docx (from raw or interim)
-from healthcare_rag_llm.pipelines.ingest_parse import run_pipeline as parse_pipeline
-
 # optional YAML config loader
 try:
     from healthcare_rag_llm.utils.io import read_yaml

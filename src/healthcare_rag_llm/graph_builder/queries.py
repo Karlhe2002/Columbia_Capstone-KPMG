@@ -60,6 +60,7 @@ def query_chunks(
     authority_names: Optional[Iterable[str]] = None,
     doc_titles: Optional[Iterable[str]] = None,
     doc_types: Optional[Iterable[str]] = None,
+    categories: Optional[Iterable[str]] = None,
     min_effective_date: Optional[Union[str, datetime, date]] = None,
     max_effective_date: Optional[Union[str, datetime, date]] = None,
     keywords=None,  # currently unused, kept for interface compatibility
@@ -90,6 +91,7 @@ def query_chunks(
                 authority_names is not None,
                 doc_titles is not None,
                 doc_types is not None,
+                categories is not None,
                 min_effective_date is not None,
                 max_effective_date is not None
             ])
@@ -100,6 +102,7 @@ def query_chunks(
             doc_filter_conditions.append("($authority_names IS NULL OR a.name IN $authority_names)")
             doc_filter_conditions.append("($doc_titles IS NULL OR d.title IN $doc_titles)")
             doc_filter_conditions.append("($doc_types IS NULL OR d.doc_type IN $doc_types)")
+            doc_filter_conditions.append("($categories IS NULL OR d.category IN $categories)")
             doc_filter_conditions.append("($min_effective_date IS NULL OR d.effective_date >= $min_effective_date)")
             doc_filter_conditions.append("($max_effective_date IS NULL OR d.effective_date <= $max_effective_date)")
             
@@ -131,6 +134,7 @@ def query_chunks(
                 d.title           AS title,
                 d.url             AS url,
                 d.doc_type        AS doc_type,
+                d.category        AS category,
                 d.effective_date  AS effective_date,
                 a.name            AS authority,
                 c.pages           AS pages,
@@ -147,6 +151,7 @@ def query_chunks(
                 "authority_names": list(authority_names) if authority_names is not None else None,
                 "doc_titles": list(doc_titles) if doc_titles is not None else None,
                 "doc_types": list(doc_types) if doc_types is not None else None,
+                "categories": list(categories) if categories is not None else None,
                 "min_effective_date": _normalize_date_filter(min_effective_date),
                 "max_effective_date": _normalize_date_filter(max_effective_date),
             }
