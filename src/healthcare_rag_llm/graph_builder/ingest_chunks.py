@@ -82,12 +82,26 @@ def _write_batch(session, batch_rows: List[Dict[str, Any]]):
         ON CREATE SET p.doc_id = row.doc_id, p.page_no = pno
       MERGE (d)-[:CONTAINS]->(p)
 
-      // --- Chunk node (all types unified) ---
       MERGE (c:Chunk {chunk_id: row.chunk_id})
         ON CREATE SET c.text = row.text,
                       c.type = row.chunk_type,
                       c.pages = row.pages,
-                      c.denseEmbedding = row.denseEmbedding
+                      c.denseEmbedding = row.denseEmbedding,
+                      c.doc_class = row.doc_class
+
+                
+    // --- NEW (add source labels) ---
+                
+      // Source-specific labels for separate vector indexes
+      //FOREACH (_ IN CASE WHEN row.doc_class = 'policy' THEN [1] ELSE [] END |
+      //  SET c:PolicyChunk
+      //)
+      //FOREACH (_ IN CASE WHEN row.doc_class = 'provider_manual' THEN [1] ELSE [] END |
+      //  SET c:ManualChunk
+      //)
+
+
+
 
       // --- Relationship by chunk type ---
       FOREACH (_ IN CASE WHEN row.chunk_type = 'text' THEN [1] ELSE [] END |
@@ -100,7 +114,7 @@ def _write_batch(session, batch_rows: List[Dict[str, Any]]):
         MERGE (p)-[:HAS_OCR]->(c)
       )
     """, {"batch": batch_rows})
-
+# Add doc_class info into the previous function
 
 def ingest_chunks(
     jsonl_path: str,

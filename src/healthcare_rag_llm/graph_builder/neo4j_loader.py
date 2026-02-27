@@ -51,4 +51,24 @@ class Neo4jConnector:
               `vector.similarity_function`: 'cosine'
             }}
             """)
+
+            # Create Separate Vector Index for different doc_class
+
+            # session.run("""
+            # CREATE VECTOR INDEX policy_chunk_vec IF NOT EXISTS
+            # FOR (c:PolicyChunk) ON (c.denseEmbedding)
+            # OPTIONS {indexConfig: {
+            #   `vector.dimensions`: 1024,
+            #   `vector.similarity_function`: 'cosine'
+            # }}
+            # """)
+            # session.run("""
+            # CREATE VECTOR INDEX manual_chunk_vec IF NOT EXISTS
+            # FOR (c:ManualChunk) ON (c.denseEmbedding)
+            # OPTIONS {indexConfig: {
+            #   `vector.dimensions`: 1024,
+            #   `vector.similarity_function`: 'cosine'
+            # }}
+            # """)
+            
             print("✅ Neo4j schema initialized (Authority, Document, Page, Chunk, vector index).")
