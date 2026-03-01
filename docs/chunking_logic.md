@@ -111,6 +111,35 @@ Splits a policy-guidelines TXT file at subsection boundaries identified from its
 
 ---
 
+## 5. Section + Semantic Chunking (Hybrid)
+
+**Source**: `src/healthcare_rag_llm/chunking/section_semantic_chunking.py`
+**Script**: `scripts/do_section_semantic_chunking.py`
+
+Two-level hybrid: first splits at ToC section boundaries (hard splits), then applies semantic chunking within each section to further split large sections.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `txt_path` | — | Path to the input TXT file |
+| `output_dir` | — | Output directory for JSONL chunks |
+| `doc_id` | `<stem>.pdf` | Document identifier for JSONL records |
+| `category` | `pharmacy` | Category tag for each chunk |
+| `max_chunk_chars` | 1200 | Maximum chunk size |
+| `model_name` | `sentence-transformers/all-MiniLM-L6-v2` | Embedding model |
+| `unit` | `sentence` | Base segmentation unit (`sentence` or `paragraph`) |
+| `similarity_threshold` | 0.35 | Cosine similarity threshold for merging |
+| `hysteresis` | 0.02 | Hysteresis band around threshold |
+
+**Process**:
+1. **Level 1 (Section split)**: Parse ToC, clean page markers, split at subsection boundaries — same as Section-Based Chunking
+2. **Level 2 (Semantic split)**: For each section:
+   - If section ≤ `max_chunk_chars` → keep as a single chunk (no further splitting)
+   - If section > `max_chunk_chars` → tokenize into sentences, generate embeddings, apply hysteresis-based merging to produce semantically coherent sub-chunks
+
+**Characteristics**: Combines structural awareness (never merges across sections) with semantic coherence (splits large sections at natural topic boundaries). Produces ~214 chunks vs 63 from pure section chunking. Default `unit=sentence` with `threshold=0.35` because PDF-extracted text uses single `\n` line wrapping (no `\n\n` paragraph separators).
+
+---
+
 ## Shared Features Across All Strategies
 
 ### Chunk Types
@@ -173,6 +202,9 @@ python scripts/do_semantic_chunking.py --unit paragraph --threshold 0.55 --max-c
 # Section-based chunking (Pharmacy)
 python scripts/do_section_chunking.py --input data/processed/pharmacy/Pharmacy_Policy_Guidelines.txt --output data/chunks/section_chunking_result
 
+# Section + Semantic hybrid chunking (Pharmacy)
+python scripts/do_section_semantic_chunking.py --input data/processed/pharmacy/Pharmacy_Policy_Guidelines.txt --output data/chunks/section_semantic_chunking_result
+
 # Full pipeline (orchestrates all steps)
 python scripts/rebuild_db.py
 ```
@@ -187,6 +219,7 @@ python scripts/rebuild_db.py
 | **Pattern-Based** | Regex separators | Fast | Structure-aware | Documents with clear delimiters |
 | **Semantic** | Embedding similarity | Slow | Highest | Specialized healthcare content |
 | **Section-Based** | ToC title boundaries | Fast | Structure-aware | Policy manuals with clear ToC |
+| **Section+Semantic** | ToC + embedding similarity | Medium | Structure + semantic | Large policy manuals needing finer splits |
 
 ---
 
