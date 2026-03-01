@@ -32,6 +32,22 @@ class ResponseGenerator:
         self.use_reranker = use_reranker
         self.filter_extractor = filter_extractor
         self.chat_history = chat_history or ChatHistory()
+        try:
+            self.compare_system_prompt = load_system_prompt("configs/system_prompt_compare.txt")
+        except FileNotFoundError:
+            self.compare_system_prompt = self.system_prompt
+
+    @staticmethod
+    def _format_chunks(chunks: List[Dict]) -> str:
+        if not chunks:
+            return "(No relevant chunks found.)"
+        return "\n\n".join(
+            [
+                f"[Document ID: {chunk['doc_id']}] -[Chunk ID: {chunk['chunk_id']}]"
+                f"-[pages: {chunk['pages']}] - [Chunk Content: {chunk['text']}]"
+                for chunk in chunks
+            ]
+        )
 
     def answer_question(self, question: str, top_k: int = 5, rerank_top_k: int = 20, history: Optional[List[Dict]] = None) -> Dict:
         """
@@ -121,4 +137,126 @@ Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
             "question": question,
             "answer": llm_response,
             "retrieved_docs": final_chunks,
+        }
+
+    def answer_compare_definitions(
+        self,
+        question: str,
+        concept: Optional[str] = None,
+        top_k_per_source: int = 5,
+        rerank_top_k: int = 20,
+    ) -> Dict:
+        """
+        Compare a concept definition across policy vs provider manual documents.
+
+        Retrieval strategy:
+          1) Retrieve by doc_classes=['policy']
+          2) Retrieve by doc_classes=['provider_manual']
+          3) Build dual-source context and ask LLM for side-by-side comparison
+        """
+        self.chat_history.add("user", question)
+        filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
+
+        retrieval_query = concept.strip() if concept and concept.strip() else question
+        query_vec = self.embedder.encode([retrieval_query])["dense_vecs"][0].tolist()
+        initial_k = rerank_top_k if self.use_reranker else top_k_per_source
+
+        base_filters = {
+            "authority_names": filters.get("authority_names"),
+            "doc_titles": filters.get("doc_titles"),
+            "doc_types": filters.get("doc_types"),
+            "min_effective_date": filters.get("min_effective_date"),
+            "max_effective_date": filters.get("max_effective_date"),
+            "keywords": filters.get("keywords"),
+        }
+
+        source_search_k = max(initial_k * 5, initial_k)
+        policy_filters = {**base_filters, "doc_classes": ["policy"]}
+        provider_manual_filters = {**base_filters, "doc_classes": ["provider_manual"]}
+
+        policy_chunks = query_chunks(
+            query_vec,
+            top_k=initial_k,
+            search_k=source_search_k,
+            **policy_filters,
+        )
+        provider_manual_chunks = query_chunks(
+            query_vec,
+            top_k=initial_k,
+            search_k=source_search_k,
+            **provider_manual_filters,
+        )
+
+        if self.use_reranker and policy_chunks:
+            policy_chunks = apply_rerank_to_chunks(
+                query=question,
+                chunks=policy_chunks,
+                combine_with_dense=True,
+                alpha=0.3,
+                text_key="text",
+                dense_score_key="score",
+            )
+        if self.use_reranker and provider_manual_chunks:
+            provider_manual_chunks = apply_rerank_to_chunks(
+                query=question,
+                chunks=provider_manual_chunks,
+                combine_with_dense=True,
+                alpha=0.3,
+                text_key="text",
+                dense_score_key="score",
+            )
+
+        policy_final = policy_chunks[:top_k_per_source]
+        provider_manual_final = provider_manual_chunks[:top_k_per_source]
+
+        policy_context = self._format_chunks(policy_final)
+        provider_context = self._format_chunks(provider_manual_final)
+        target_concept = concept if concept and concept.strip() else "the requested concept"
+
+        user_msg = f"""
+Question:
+{question}
+
+Target concept:
+{target_concept}
+
+Policy Context Chunks (authoritative; cite only these):
+{policy_context}
+
+Provider Manual Context Chunks (authoritative; cite only these):
+{provider_context}
+
+Chunks format:
+[Document ID: <doc_id>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+
+Output sections (exactly):
+- Policy Definition
+- Provider Manual Definition
+- Comparison (similarities and differences)
+- Evidence (quoted)
+- Caveats (if any)
+Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
+If either side has insufficient evidence, state that explicitly.
+""".strip()
+
+        messages = []
+        if self.compare_system_prompt:
+            messages.append({"role": "system", "content": self.compare_system_prompt})
+        messages.extend(self.chat_history.get_messages())
+        if messages and messages[-1]["role"] == "user":
+            messages[-1]["content"] = user_msg
+        else:
+            messages.append({"role": "user", "content": user_msg})
+
+        llm_response = self.llm_client.chat(messages=messages)
+        self.chat_history.add("assistant", llm_response)
+
+        return {
+            "question": question,
+            "concept": concept,
+            "answer": llm_response,
+            "retrieved_docs": {
+                "policy": policy_final,
+                "provider_manual": provider_manual_final,
+            },
         }

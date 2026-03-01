@@ -49,7 +49,7 @@ def _write_batch(session, batch_rows: List[Dict[str, Any]]):
     Batch write a set of records into Neo4j.
 
     Structure:
-      (:Authority)-[:ISSUED]->(:Document {category})
+      (:Authority)-[:ISSUED]->(:Document {category, doc_class})
         └─[:CONTAINS]->(:Page)
              ├─[:HAS_CHUNK]->(:Chunk {type:'text'})
              ├─[:HAS_TABLE]->(:Chunk {type:'table'})
@@ -67,9 +67,11 @@ def _write_batch(session, batch_rows: List[Dict[str, Any]]):
                     d.url = row.url,
                     d.doc_type = row.doc_type,
                     d.effective_date = row.effective_date,
-                    d.category = row.category
+                    d.category = row.category,
+                    d.doc_class = row.doc_class
       // Keep category up to date even if the Document already exists
-      SET d.category = coalesce(row.category, d.category)
+      SET d.category = coalesce(row.category, d.category),
+          d.doc_class = coalesce(row.doc_class, d.doc_class)
 
     MERGE (a)-[:ISSUED]->(d)
 
@@ -80,12 +82,26 @@ def _write_batch(session, batch_rows: List[Dict[str, Any]]):
         ON CREATE SET p.doc_id = row.doc_id, p.page_no = pno
       MERGE (d)-[:CONTAINS]->(p)
 
-      // --- Chunk node (all types unified) ---
       MERGE (c:Chunk {chunk_id: row.chunk_id})
         ON CREATE SET c.text = row.text,
                       c.type = row.chunk_type,
                       c.pages = row.pages,
-                      c.denseEmbedding = row.denseEmbedding
+                      c.denseEmbedding = row.denseEmbedding,
+                      c.doc_class = row.doc_class
+
+                
+    // --- NEW (add source labels) ---
+                
+      // Source-specific labels for separate vector indexes
+      //FOREACH (_ IN CASE WHEN row.doc_class = 'policy' THEN [1] ELSE [] END |
+      //  SET c:PolicyChunk
+      //)
+      //FOREACH (_ IN CASE WHEN row.doc_class = 'provider_manual' THEN [1] ELSE [] END |
+      //  SET c:ManualChunk
+      //)
+
+
+
 
       // --- Relationship by chunk type ---
       FOREACH (_ IN CASE WHEN row.chunk_type = 'text' THEN [1] ELSE [] END |
@@ -98,7 +114,7 @@ def _write_batch(session, batch_rows: List[Dict[str, Any]]):
         MERGE (p)-[:HAS_OCR]->(c)
       )
     """, {"batch": batch_rows})
-
+# Add doc_class info into the previous function
 
 def ingest_chunks(
     jsonl_path: str,
@@ -173,6 +189,7 @@ def ingest_chunks(
                     record.get("effective_date") or meta.get("effective_date")
                 )
                 doc_type = meta.get("doc_type", "PDF")
+                doc_class = (meta.get("doc_class") or "").strip()
 
                 # --- Accumulate row for batch write ---
                 batch.append({
@@ -189,6 +206,7 @@ def ingest_chunks(
                     "text": text,
                     "denseEmbedding": dense_vec,
                     "pages": pages,
+                    "doc_class": doc_class,
                 })
                 chunk_count += 1
 

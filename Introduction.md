@@ -25,6 +25,7 @@ Copy-Item .env.example .env
 
 # Open docker desktop
 docker compose up -d
+cd ..
 
 # Test database connection
 python scripts/test_neo4j.py

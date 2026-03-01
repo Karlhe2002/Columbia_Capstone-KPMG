@@ -1,0 +1,12 @@
+Manual → Neo4j quick start
+
+1) Make sure venv + deps are installed
+   .venv\Scripts\python.exe -m pip install -r requirements.txt
+
+2) Ingest manual chunks directly (no conversion step needed)
+   set PYTHONIOENCODING=utf-8
+   .venv\Scripts\python.exe scripts\ingest_graph.py --chunk_dir "data\chunks\section_chunking_result"
+
+3) Verify in Neo4j
+   MATCH (d:Document {doc_id: "pharmacy_policy_guidelines.pdf"})
+   RETURN d.doc_id, d.category, d.doc_class;

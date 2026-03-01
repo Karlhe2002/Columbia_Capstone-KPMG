@@ -29,7 +29,7 @@ def load_metadata(meta_path: Path):
         import csv
         reader = csv.DictReader(f)
         for row in reader:
-            doc_id = row.get("file_name", "").strip()
+            doc_id = row.get("file_name", "").strip().lower()
             if not doc_id:
                 continue
             mapping[doc_id] = {
@@ -39,6 +39,7 @@ def load_metadata(meta_path: Path):
                 "url": row.get("source_url", "").strip(),
                 "effective_date": row.get("effective_date", "").strip(),
                 "doc_type": row.get("doc_type", "").strip().upper() or "PDF",
+                "doc_class": row.get("doc_class", "").strip(),
             }
 
     print(f"[INFO] Loaded {len(mapping)} metadata rows from {meta_path}")
