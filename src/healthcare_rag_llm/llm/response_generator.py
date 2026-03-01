@@ -150,8 +150,8 @@ Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
         Compare a concept definition across policy vs provider manual documents.
 
         Retrieval strategy:
-          1) Retrieve by categories=['policy']
-          2) Retrieve by categories=['provider_manual']
+          1) Retrieve by doc_classes=['policy']
+          2) Retrieve by doc_classes=['provider_manual']
           3) Build dual-source context and ask LLM for side-by-side comparison
         """
         self.chat_history.add("user", question)
@@ -161,7 +161,7 @@ Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
         query_vec = self.embedder.encode([retrieval_query])["dense_vecs"][0].tolist()
         initial_k = rerank_top_k if self.use_reranker else top_k_per_source
 
-        shared_filters = {
+        base_filters = {
             "authority_names": filters.get("authority_names"),
             "doc_titles": filters.get("doc_titles"),
             "doc_types": filters.get("doc_types"),
@@ -170,17 +170,21 @@ Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
             "keywords": filters.get("keywords"),
         }
 
+        source_search_k = max(initial_k * 5, initial_k)
+        policy_filters = {**base_filters, "doc_classes": ["policy"]}
+        provider_manual_filters = {**base_filters, "doc_classes": ["provider_manual"]}
+
         policy_chunks = query_chunks(
             query_vec,
             top_k=initial_k,
-            categories=["policy"],
-            **shared_filters,
+            search_k=source_search_k,
+            **policy_filters,
         )
         provider_manual_chunks = query_chunks(
             query_vec,
             top_k=initial_k,
-            categories=["provider_manual"],
-            **shared_filters,
+            search_k=source_search_k,
+            **provider_manual_filters,
         )
 
         if self.use_reranker and policy_chunks:
