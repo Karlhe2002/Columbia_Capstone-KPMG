@@ -37,7 +37,7 @@ SRC_JSON_DIR = PROJECT_ROOT / "data" / "raw" / "pm" / "parse_raw_json"
 
 OUT_DIR = PROJECT_ROOT / "data" / "raw" / "pm" / "parse_hyperlink"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-OUT_FILE = OUT_DIR / "hyperlinks.csv"
+# OUT_FILE = OUT_DIR / "hyperlinks.csv"
 
 
 # =============================================================================
@@ -404,7 +404,7 @@ def process_file(path: Path, writer: csv.DictWriter, relbase: Path) -> int:
 # Main
 # =============================================================================
 def main():
-    """Scan all files under SRC_RAW_DIR and write hyperlinks.csv."""
+    """Scan each policy file under SRC_RAW_DIR and write one CSV per file."""
     if not SRC_RAW_DIR.exists():
         print(f"Source directory not found: {SRC_RAW_DIR}")
         return
@@ -419,16 +419,26 @@ def main():
         "line_text",
     ]
 
-    total = 0
-    with OUT_FILE.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
+    total_files = 0
 
-        for p in sorted(SRC_RAW_DIR.rglob("*")):
-            if p.is_file():
-                total += process_file(p, writer, relbase)
+    for p in sorted(SRC_RAW_DIR.glob("*.txt")):
+        if not p.is_file():
+            continue
 
-    print(f"Wrote {total} hyperlink occurrences to {OUT_FILE}")
+        # Create output CSV name based on policy file name
+        policy_name = p.stem
+        out_file = OUT_DIR / f"{policy_name}_hyperlinks.csv"
+
+        with out_file.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+
+            count = process_file(p, writer, relbase)
+
+        print(f"Wrote {count} links to {out_file}")
+        total_files += 1
+
+    print(f"\nProcessed {total_files} policy guideline files.")
 
 
 if __name__ == "__main__":
