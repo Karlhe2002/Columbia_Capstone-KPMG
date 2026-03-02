@@ -9,8 +9,10 @@ import csv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-PDF_PATH = PROJECT_ROOT / "data" / "raw" / "pm" / "Pharmacy_Policy_Guidelines.pdf"
-PARSED_JSON = PROJECT_ROOT / "data" / "raw" / "pm" / "parse_raw_json" / "Pharmacy_Policy_Guidelines.json"
+# PDF_PATH = PROJECT_ROOT / "data" / "raw" / "pm" / "Pharmacy_Policy_Guidelines.pdf"
+# PARSED_JSON = PROJECT_ROOT / "data" / "raw" / "pm" / "parse_raw_json" / "Pharmacy_Policy_Guidelines.json"
+PDF_DIR = PROJECT_ROOT / "data" / "raw" / "pm"
+PARSED_JSON_DIR = PROJECT_ROOT / "data" / "raw" / "pm" / "parse_raw_json"
 
 OUT_DIR = PROJECT_ROOT / "data" / "raw" / "pm" / "parse_csv"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -62,7 +64,7 @@ def get_pages_with_tables(parsed_json_path: Path):
 # Extract Tables From Original PDF
 # ============================================================
 
-def extract_tables_from_pdf(pdf_path: Path, page_numbers: list[int]):
+def extract_tables_from_pdf(pdf_path: Path, page_numbers: list[int], policy_out_dir: Path):
     with pdfplumber.open(pdf_path) as pdf:
 
         for page_no in page_numbers:
@@ -82,7 +84,7 @@ def extract_tables_from_pdf(pdf_path: Path, page_numbers: list[int]):
                     for row in table
                 ]
 
-                out_path = OUT_DIR / f"{pdf_path.stem}_page_{page_no}_table_{idx}.csv"
+                out_path = policy_out_dir / f"{pdf_path.stem}_page_{page_no}_table_{idx}.csv"
 
                 with out_path.open("w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
@@ -96,27 +98,49 @@ def extract_tables_from_pdf(pdf_path: Path, page_numbers: list[int]):
 # ============================================================
 
 def main():
-    if not PDF_PATH.exists():
-        print("PDF not found.")
+
+    if not PDF_DIR.exists():
+        print("PDF directory not found.")
         return
 
-    if not PARSED_JSON.exists():
-        print("Parsed JSON not found.")
+    if not PARSED_JSON_DIR.exists():
+        print("Parsed JSON directory not found.")
         return
 
-    print("Detecting pages with potential tables...")
-    pages = get_pages_with_tables(PARSED_JSON)
+    pdf_files = list(PDF_DIR.glob("*.pdf"))
 
-    if not pages:
-        print("No likely table pages detected.")
+    if not pdf_files:
+        print("No PDF files found.")
         return
 
-    print(f"Pages flagged for extraction: {pages}")
+    for pdf_path in pdf_files:
 
-    print("Extracting tables from original PDF...")
-    extract_tables_from_pdf(PDF_PATH, pages)
+        policy_name = pdf_path.stem
+        parsed_json_path = PARSED_JSON_DIR / f"{policy_name}.json"
 
-    print("Done.")
+        if not parsed_json_path.exists():
+            print(f"Skipping {policy_name}: no matching parsed JSON found.")
+            continue
+
+        print(f"\nProcessing policy: {policy_name}")
+
+        # Create subfolder for this policy
+        policy_out_dir = OUT_DIR / policy_name
+        policy_out_dir.mkdir(parents=True, exist_ok=True)
+
+        print("Detecting pages with potential tables...")
+        pages = get_pages_with_tables(parsed_json_path)
+
+        if not pages:
+            print("No likely table pages detected.")
+            continue
+
+        print(f"Pages flagged for extraction: {pages}")
+
+        print("Extracting tables from original PDF...")
+        extract_tables_from_pdf(pdf_path, pages, policy_out_dir)
+
+    print("\nAll policies processed.")
 
 
 if __name__ == "__main__":
