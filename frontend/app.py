@@ -85,6 +85,12 @@ def load_rag_pipeline():
     filter_extractor = build_filter_extractor()
     return ResponseGenerator(llm_client,filter_extractor=filter_extractor)
 
+def get_rag_pipeline_lazy():
+    """Create the RAG pipeline only when user submits a query."""
+    if "rag_pipeline" not in st.session_state:
+        st.session_state["rag_pipeline"] = load_rag_pipeline()
+    return st.session_state["rag_pipeline"]
+
 
 def format_evidence_dict(evidence_dict):
     """format evidence_dict as HTML list"""
@@ -136,8 +142,6 @@ def format_retrieved_docs(retrieved_docs):
         """)
 
     return "".join(html_lines)
-
-rag_pipeline = load_rag_pipeline()
 
 # ============================================================
 # ========== CHAT MODE (Multiple Q&A) ========================
@@ -213,11 +217,22 @@ for msg in st.session_state["history"]:
     if role == "assistant":
         text = text.replace("\n", "<br>")
     evidence_dict = msg.get("evidence_dict", {})
+    is_compare = bool(msg.get("is_compare", False))
 
     if role == "assistant":
         formatted_evidence = format_evidence_dict(evidence_dict)
         if "retrieved_docs" in msg and msg.get("retrieved_docs"):
             formatted_sources = format_retrieved_docs(msg["retrieved_docs"])
+            evidence_block = ""
+            if not is_compare:
+                evidence_block = f"""
+<br><br>
+<b>Evidence:</b><br>
+<em style="color: #666; font-size: 0.9em;">Direct quotes from official documents that support the answer above.</em>
+<br>
+{formatted_evidence}
+<br>
+"""
             
             display_content = f"""
 <div class="chat-row assistant">
@@ -225,12 +240,7 @@ for msg in st.session_state["history"]:
 <div class="chat-bubble assistant">
 <b>Answer:</b> 
 <br>{text}<br>
-<br><br>
-<b>Evidence:</b><br>
-<em style="color: #666; font-size: 0.9em;">Direct quotes from official documents that support the answer above.</em>
-<br>
-{formatted_evidence}
-<br>
+{evidence_block}
 <strong>📚 Retrieved Sources:</strong><br>
 <em style="color: #666; font-size: 0.9em;">Document snippets that were retrieved and analyzed to answer your question.</em>
 <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
@@ -247,11 +257,7 @@ for msg in st.session_state["history"]:
 <div class="avatar assistant">🤔</div>
 <div class="chat-bubble assistant">
 <b>Answer:</b> {text}
-<br><br>
-<b>Evidence:</b><br>
-<em style="color: #666; font-size: 0.9em;">Direct quotes from official documents that support the answer above.</em>
-<br>
-{formatted_evidence}
+{"" if is_compare else f"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><br>{formatted_evidence}"}
 </div>
 </div>
 """,
@@ -293,6 +299,7 @@ with st.container():
 # Clear logic
 if cleared:
     st.session_state["history"] = []
+    rag_pipeline = st.session_state.get("rag_pipeline")
     if rag_pipeline:
         try:
             rag_pipeline.chat_history.clear()
@@ -308,6 +315,7 @@ if submitted or compare_submitted:
         # st.session_state["history"].append({"role": "user", "content": user_query})
         with st.spinner("Comparing definitions..." if compare_submitted else "Retrieving information..."):
             try:
+                rag_pipeline = get_rag_pipeline_lazy()
                 if rag_pipeline:
                     # --- Real backend ---
                     if compare_submitted:
@@ -343,7 +351,8 @@ if submitted or compare_submitted:
                                                         "role": "assistant", 
                                                         "content": answer,
                                                         "evidence_dict": evidence_dict,
-                                                        "retrieved_docs": retrieved_docs  # 
+                                                        "retrieved_docs": retrieved_docs,
+                                                        "is_compare": compare_submitted,
                                                     })
                 st.rerun()
 

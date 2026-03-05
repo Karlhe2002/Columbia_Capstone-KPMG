@@ -3,7 +3,7 @@
 from typing import Dict, List, Optional
 from healthcare_rag_llm.llm.llm_client import LLMClient
 from healthcare_rag_llm.graph_builder.queries import query_chunks
-from healthcare_rag_llm.embedding.HealthcareEmbedding import HealthcareEmbedding
+from healthcare_rag_llm.embedding.HealthcareEmbedding import get_embedding_singleton
 from healthcare_rag_llm.reranking.reranker import apply_rerank_to_chunks
 from healthcare_rag_llm.llm.chat_history import ChatHistory
 from healthcare_rag_llm.utils.prompt_config import load_system_prompt
@@ -28,7 +28,7 @@ class ResponseGenerator:
             system_prompt = load_system_prompt()
         self.system_prompt = system_prompt
         self.llm_client = llm_client
-        self.embedder = HealthcareEmbedding()
+        self.embedder = None
         self.use_reranker = use_reranker
         self.filter_extractor = filter_extractor
         self.chat_history = chat_history or ChatHistory()
@@ -37,14 +37,36 @@ class ResponseGenerator:
         except FileNotFoundError:
             self.compare_system_prompt = self.system_prompt
 
+    def _get_embedder(self):
+        if self.embedder is None:
+            self.embedder = get_embedding_singleton()
+        return self.embedder
+
     @staticmethod
-    def _format_chunks(chunks: List[Dict]) -> str:
+    def _get_doc_title(chunk: Dict) -> str:
+        return (
+            chunk.get("title")
+            or chunk.get("doc_title")
+            or chunk.get("doc_id")
+            or "Unknown Document"
+        )
+
+    @staticmethod
+    def _compact_text(text: str, max_chars: int = 500) -> str:
+        cleaned = " ".join((text or "").split())
+        if len(cleaned) <= max_chars:
+            return cleaned
+        return cleaned[:max_chars].rstrip() + " ..."
+
+    @classmethod
+    def _format_chunks(cls, chunks: List[Dict], compact_text: bool = False) -> str:
         if not chunks:
             return "(No relevant chunks found.)"
         return "\n\n".join(
             [
-                f"[Document ID: {chunk['doc_id']}] -[Chunk ID: {chunk['chunk_id']}]"
-                f"-[pages: {chunk['pages']}] - [Chunk Content: {chunk['text']}]"
+                f"[Document Title: {cls._get_doc_title(chunk)}] -[Chunk ID: {chunk['chunk_id']}]"
+                f"-[pages: {chunk['pages']}] - [Chunk Content: "
+                f"{cls._compact_text(chunk.get('text', '')) if compact_text else chunk.get('text', '')}]"
                 for chunk in chunks
             ]
         )
@@ -64,7 +86,7 @@ class ResponseGenerator:
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
 
         # 1. Encode query as vector
-        query_vec = self.embedder.encode([question])["dense_vecs"][0].tolist()
+        query_vec = self._get_embedder().encode([question])["dense_vecs"][0].tolist()
         
         # 2. Retrieve more chunks initially (for reranking)
         initial_k = rerank_top_k if self.use_reranker else top_k
@@ -94,10 +116,7 @@ class ResponseGenerator:
         final_chunks = retrieved_chunks[:top_k]
         
         # 3. Context
-        context = "\n\n".join(
-            [f"[Document ID: {chunk['doc_id']}] -[Chunk ID: {chunk['chunk_id']}]-[pages: {chunk['pages']}] - [Chunk Content: {chunk['text']}]" 
-             for chunk in final_chunks]
-        )
+        context = self._format_chunks(final_chunks)
         
         # 6. Generate response 
         user_msg = f"""
@@ -108,13 +127,13 @@ Context Chunks (authoritative; cite only these):
 {context}
 
 Chunks format:
-[Document ID: <doc_id>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
 
 Output sections (exactly):
 - Answer
 - Evidence (quoted)
 - Caveats (if any)
-Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
+Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, YYYY].
 """.strip()
 
         # llm_response = self.llm_client.chat(
@@ -143,7 +162,7 @@ Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
         self,
         question: str,
         concept: Optional[str] = None,
-        top_k_per_source: int = 5,
+        top_k_per_source: int = 3,
         rerank_top_k: int = 20,
     ) -> Dict:
         """
@@ -158,7 +177,7 @@ Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
 
         retrieval_query = concept.strip() if concept and concept.strip() else question
-        query_vec = self.embedder.encode([retrieval_query])["dense_vecs"][0].tolist()
+        query_vec = self._get_embedder().encode([retrieval_query])["dense_vecs"][0].tolist()
         initial_k = rerank_top_k if self.use_reranker else top_k_per_source
 
         base_filters = {
@@ -209,8 +228,8 @@ Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
         policy_final = policy_chunks[:top_k_per_source]
         provider_manual_final = provider_manual_chunks[:top_k_per_source]
 
-        policy_context = self._format_chunks(policy_final)
-        provider_context = self._format_chunks(provider_manual_final)
+        policy_context = self._format_chunks(policy_final, compact_text=True)
+        provider_context = self._format_chunks(provider_manual_final, compact_text=True)
         target_concept = concept if concept and concept.strip() else "the requested concept"
 
         user_msg = f"""
@@ -227,15 +246,16 @@ Provider Manual Context Chunks (authoritative; cite only these):
 {provider_context}
 
 Chunks format:
-[Document ID: <doc_id>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
 
 Output sections (exactly):
+- Headline Summary of the 2 sources
 - Policy Definition
 - Provider Manual Definition
 - Comparison (similarities and differences)
 - Evidence (quoted)
 - Caveats (if any)
-Each bullet must have a citation like [doc or doc:page — Mon DD, YYYY].
+Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, YYYY].
 If either side has insufficient evidence, state that explicitly.
 """.strip()
 
