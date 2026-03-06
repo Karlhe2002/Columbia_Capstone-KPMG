@@ -1,17 +1,15 @@
 import streamlit as st
-from PIL import Image
-import traceback
 from pathlib import Path
 import sys
-from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
+import traceback
 import html
 
 # ============================================================
 # ========== PATH SETUP ======================================
 # ============================================================
-st.set_page_config(page_title="NYS Policies Assistant", layout="wide")
+st.set_page_config(page_title="Compare Definitions - NYS Policies Assistant", layout="wide")
 
-ROOT = Path(__file__).resolve().parents[1]  # project root
+ROOT = Path(__file__).resolve().parents[2]  # project root
 SRC_DIR = ROOT / "src"
 sys.path.append(str(SRC_DIR))  # allow import from src/
 
@@ -21,42 +19,24 @@ sys.path.append(str(SRC_DIR))  # allow import from src/
 try:
     from healthcare_rag_llm.llm.llm_client import LLMClient
     from healthcare_rag_llm.llm.response_generator import ResponseGenerator
-    #from healthcare_rag_llm.llm.guardrail_response_wrapper import ResponseGenerator
+    from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
     HAS_BACKEND = True
 except Exception as e:
-    
     HAS_BACKEND = False
     st.exception(e)
     st.code(traceback.format_exc())
-    st.warning(f"⚠️ Backend import failed: {e}. Mock mode enabled.")
-
-# ============================================================
-# ========== STREAMLIT PAGE CONFIG ===========================
-# ============================================================
-# Paths
-ROOT_DIR = Path(__file__).parent
-ASSETS_DIR = ROOT_DIR / "assets"
-nys_logo_path = ASSETS_DIR / "nys_logo.png"
+    st.warning(f"Backend import failed: {e}. Mock mode enabled.")
 
 # ============================================================
 # ========== HEADER ==========================================
 # ============================================================
-col1, col2 = st.columns([5, 1])
-with col1:
-    st.title("NYS Healthcare Policies Assistant")
-    st.caption("An AI-powered assistant for navigating New York State medical care policies.")
-with col2:
-    if nys_logo_path.exists():
-        nys_logo = Image.open(nys_logo_path)
-        st.image(nys_logo, width=200)
-    else:
-        st.text("NYS Logo Missing")
+st.title("Compare Definitions")
+st.caption("Side-by-side comparison of definitions across policy and provider manual documents.")
 
-# ============================================================
 # ============================================================
 # ========== DISCLAIMER ======================================
 # ============================================================
-with st.expander("📜Disclaimer", expanded=True):
+with st.expander("📜 Disclaimer", expanded=True):
     st.markdown("""
 This assistant is part of the **Columbia University x KPMG Capstone Project**:
 *Intelligent Document Analysis for Healthcare Programs Using LLMs and RAG.*
@@ -66,19 +46,19 @@ New York State Medicaid documents and related authorities.
 They do not constitute legal advice.
 """)
 
-with st.expander("About and How It Works", expanded=False):
+with st.expander("ℹ️ About and How It Works", expanded=True):
     st.markdown("""
-**How it works**
-- Your question is matched to relevant official NYS Medicaid documents.
-- The system retrieves excerpts and uses them to generate a cited answer.
-- You can review the retrieved sources below each response.
+**Purpose (Comparison)**  
+Compare how a concept is defined in policy vs provider manuals.
 
-**Guidelines for best results**
-- Ask one focused question at a time.
-- Include key terms (program name, policy topic, date range).
-- Verify important decisions against the cited sources.
+**How it works**  
+We retrieve both sources and generate a cited side‑by‑side comparison.
+
+**Tips**  
+Use a concise concept (e.g., “medical necessity”) and add qualifiers if needed.
 """)
 
+# ============================================================
 # ========== INITIALIZE RAG PIPELINE =========================
 # ============================================================
 @st.cache_resource
@@ -89,90 +69,70 @@ def load_rag_pipeline():
     api_config_manager = APIConfigManager()
     api_config_default = api_config_manager.get_default_config()
     llm_client = LLMClient(
-        api_key=api_config_default.api_key,  # API key
+        api_key=api_config_default.api_key,
         model="gemini-2.5-flash",
         provider=api_config_default.provider,
         base_url=api_config_default.base_url
     )
     filter_extractor = build_filter_extractor()
-    return ResponseGenerator(llm_client,filter_extractor=filter_extractor)
+    return ResponseGenerator(llm_client, filter_extractor=filter_extractor)
 
 def get_rag_pipeline_lazy():
-    """Create the RAG pipeline only when user submits a query."""
-    if "rag_pipeline" not in st.session_state:
-        st.session_state["rag_pipeline"] = load_rag_pipeline()
-    return st.session_state["rag_pipeline"]
+    if "compare_rag_pipeline" not in st.session_state:
+        st.session_state["compare_rag_pipeline"] = load_rag_pipeline()
+    return st.session_state["compare_rag_pipeline"]
 
-
+# ============================================================
+# ========== HELPERS =========================================
+# ============================================================
 def format_evidence_dict(evidence_dict):
-    """format evidence_dict as markdown"""
     if not evidence_dict:
         return "No evidence returned."
-
     md_lines = []
-    for i, (key, ev) in enumerate(evidence_dict.items(), 1):
+    for _, ev in evidence_dict.items():
         doc_info = ev.get("doc_info", "Unknown")
         quote = ev.get("quote", "")
         publish_date = ev.get("publish_date", "N/A")
         url = ev.get("url", "N/A")
-
         md_lines.append(
-            f"- **{doc_info}**, Published on {publish_date}: [{url}]({url})"
+            f"- **{doc_info}**, Published on {publish_date}: [{url}]({url})\n"
             f"> {quote}"
         )
-
-    return "".join(md_lines)
-
+    return "\n".join(md_lines)
 
 def format_retrieved_docs(retrieved_docs):
-    """format retrieved_docs as markdown list"""
     if not retrieved_docs:
         return ""
-
     md_lines = []
     for doc in retrieved_docs:
         title = doc.get("title", "")
         doc_id = doc.get("doc_id", "Unknown")
         display_name = title if title else doc_id
         url = doc.get("url", "N/A")
-
         pages = str(doc.get("pages", "N/A"))
         snippet = doc.get("text", "")[:300]
-        effective_date = doc.get("effective_date", "")
-
         md_lines.append(
-            f"- **{display_name}** (pages {pages})"
-            f"[{url}]({url})"
+            f"- **{display_name}** (pages {pages})\n"
+            f"[{url}]({url})\n"
             f"<span style='color: #666; font-size: 0.9em;'>{snippet}...</span>"
         )
-
-    return "".join(md_lines)
-
+    return "\n".join(md_lines)
 
 # ============================================================
-# ========== CHAT MODE (Multiple Q&A) ========================
+# ========== SESSION STATE ===================================
 # ============================================================
-# Initialize history
-if "history" not in st.session_state:
-    st.session_state["history"] = []  # [{"role": "user"/"assistant", "content": "..."}]
-
-# Container: display history (natural order)
-chat_container = st.container()
+if "compare_history" not in st.session_state:
+    st.session_state["compare_history"] = []
 
 # ============================================================
-# ========== DISPLAY CHAT HISTORY (layout) ===================
+# ========== DISPLAY HISTORY ================================
 # ============================================================
 st.markdown(
     """
     <style>
-    /* container */
     .chat-container { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem; font-size: 15px; }
-
-    /* chat row */
     .chat-row { display: flex; align-items: flex-start; }
     .chat-row.user { justify-content: flex-end; }
-
-    /* chat bubble */
     .chat-bubble {
         max-width: 70%;
         padding: 0.7rem 1rem;
@@ -193,8 +153,6 @@ st.markdown(
         color: #000;
         border-top-right-radius: 0.3rem;
     }
-
-    /* avatar */
     .avatar {
         width: 36px; height: 36px;
         border-radius: 50%;
@@ -204,8 +162,6 @@ st.markdown(
         margin: 0 0.5rem;
     }
     .avatar.user { background-color: #CDE9FF; }
-
-    /* font */
     input, button, label, div[data-testid="stMarkdownContainer"] {
         font-size: 15px !important;
     }
@@ -214,9 +170,8 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Load history
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-for msg in st.session_state["history"]:
+for msg in st.session_state["compare_history"]:
     role = msg["role"]
     text = msg["content"]
 
@@ -229,7 +184,7 @@ for msg in st.session_state["history"]:
         st.markdown(
             """
 <div class="chat-row assistant">
-<div class="avatar assistant">AI</div>
+<div class="avatar assistant">&#x1F914;</div>
 <div class="chat-bubble assistant">
             """,
             unsafe_allow_html=True,
@@ -252,7 +207,7 @@ for msg in st.session_state["history"]:
         st.markdown(
             f"""<div class="chat-row user">
                 <div class="chat-bubble user">{safe_text}</div>
-                <div class="avatar user">You</div>
+                <div class="avatar user">&#x1F464;</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -260,29 +215,31 @@ for msg in st.session_state["history"]:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================
-# ========== INPUT AREA (two-line layout) ====================
+# ========== INPUT AREA ======================================
 # ============================================================
 with st.container():
     st.markdown('<div class="input-box">', unsafe_allow_html=True)
 
-    with st.form("chat_form", clear_on_submit=True):
+    with st.form("compare_form", clear_on_submit=True):
         user_query = st.text_input(
-            "**Ask a Question:**",
-            placeholder="e.g. When did redetermination begin for the COVID-19 Public Health Emergency unwind in New York State?",
+            "🔎 **Compare a Concept:**",
+            placeholder="e.g. Define 'medical necessity' in policy vs provider manual.",
         )
 
         col1, col2 = st.columns([1, 1])
         with col1:
-            submitted = st.form_submit_button("Submit", use_container_width=True)
+            submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
         with col2:
-            cleared = st.form_submit_button("Clear Chat", use_container_width=True)
+            cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Clear logic
+# ============================================================
+# ========== CLEAR / SUBMIT ==================================
+# ============================================================
 if cleared:
-    st.session_state["history"] = []
-    rag_pipeline = st.session_state.get("rag_pipeline")
+    st.session_state["compare_history"] = []
+    rag_pipeline = st.session_state.get("compare_rag_pipeline")
     if rag_pipeline:
         try:
             rag_pipeline.chat_history.clear()
@@ -290,65 +247,40 @@ if cleared:
             st.error(f"Error clearing chat history: {e}")
     st.rerun()
 
-# Submit logic
 if submitted:
     if not user_query.strip():
-        st.warning("Please enter a question before submitting.")
+        st.warning("Please enter a concept before comparing.")
     else:
-        with st.spinner("Retrieving information..."):
+        with st.spinner("Comparing definitions..."):
             try:
                 rag_pipeline = get_rag_pipeline_lazy()
                 if rag_pipeline:
-                    # --- Real backend ---
-                    result = rag_pipeline.answer_question(user_query, history=st.session_state["history"])
+                    result = rag_pipeline.answer_compare_definitions(
+                        user_query,
+                        concept=user_query,
+                    )
                     answer = result.get("answer", "No answer returned.")
                     evidence_dict = result.get("evidence_dict", {})
                     retrieved_docs = result.get("retrieved_docs", [])
+                    if isinstance(retrieved_docs, dict):
+                        policy_docs = retrieved_docs.get("policy", []) or []
+                        provider_docs = retrieved_docs.get("provider_manual", []) or []
+                        retrieved_docs = policy_docs + provider_docs
                 else:
-                    # --- Mock mode ---
                     answer = (
-                        "?????? Mock mode: Backend not connected."
+                        "Mock mode: Backend not connected.\n"
                         "No grounded answer can be generated. "
                         "Please connect the backend (RAG pipeline) to enable cited answers."
                     )
                     evidence_dict = {}
                     retrieved_docs = []
-                st.session_state["history"].append({"role": "user", "content": user_query})
-                st.session_state["history"].append({
-                                                        "role": "assistant",
-                                                        "content": answer,
-                                                        "evidence_dict": evidence_dict,
-                                                        "retrieved_docs": retrieved_docs,
-                                                    })
+                st.session_state["compare_history"].append({"role": "user", "content": user_query})
+                st.session_state["compare_history"].append({
+                    "role": "assistant",
+                    "content": answer,
+                    "evidence_dict": evidence_dict,
+                    "retrieved_docs": retrieved_docs,
+                })
                 st.rerun()
-
             except Exception as e:
                 st.error(f"Error: {e}")
-
-
-# ============================================================
-# ========== BACKEND MEMORY VIEWER (for debugging) ===========
-# ============================================================
-
-# if rag_pipeline and hasattr(rag_pipeline, "chat_history"):
-#     with st.expander("🧠 Backend Memory Viewer", expanded=False):
-#         if hasattr(rag_pipeline.chat_history, "messages"):
-#             messages = rag_pipeline.chat_history.get_messages()
-#             if not messages:
-#                 st.caption("*(Empty – no conversation stored in backend memory)*")
-#             else:
-#                 for i, msg in enumerate(messages, 1):
-#                     role = msg["role"].capitalize()
-#                     content = msg["content"][:1000]  # 截断长文本防止爆页面
-#                     st.markdown(f"**{i}. {role}:** {content}")
-#         else:
-#             st.caption("ChatHistory not initialized or has no messages attribute.")
-
-# # ============================================================
-# # ========== FOOTER ==========================================
-# # ============================================================
-# st.divider()
-# st.markdown(
-#     "<p style='font-size: small; color: gray;'>© 2025 Columbia DSI x KPMG | For educational use only.</p>",
-#     unsafe_allow_html=True
-# )

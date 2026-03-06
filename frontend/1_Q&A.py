@@ -56,7 +56,7 @@ with col2:
 # ============================================================
 # ========== DISCLAIMER ======================================
 # ============================================================
-with st.expander("📜Disclaimer", expanded=True):
+with st.expander("📜 Disclaimer", expanded=True):
     st.markdown("""
 This assistant is part of the **Columbia University x KPMG Capstone Project**:
 *Intelligent Document Analysis for Healthcare Programs Using LLMs and RAG.*
@@ -66,17 +66,16 @@ New York State Medicaid documents and related authorities.
 They do not constitute legal advice.
 """)
 
-with st.expander("About and How It Works", expanded=False):
+with st.expander("ℹ️ About and How It Works", expanded=True):
     st.markdown("""
-**How it works**
-- Your question is matched to relevant official NYS Medicaid documents.
-- The system retrieves excerpts and uses them to generate a cited answer.
-- You can review the retrieved sources below each response.
+**Purpose (Q&A)**  
+Ask one policy question and get a grounded, cited answer.
 
-**Guidelines for best results**
-- Ask one focused question at a time.
-- Include key terms (program name, policy topic, date range).
-- Verify important decisions against the cited sources.
+**How it works**  
+We retrieve relevant NYS Medicaid sources and generate a response with citations.
+
+**Tips**  
+Use specific terms (program, topic, date range) and verify against citations.
 """)
 
 # ========== INITIALIZE RAG PIPELINE =========================
@@ -117,11 +116,11 @@ def format_evidence_dict(evidence_dict):
         url = ev.get("url", "N/A")
 
         md_lines.append(
-            f"- **{doc_info}**, Published on {publish_date}: [{url}]({url})"
+            f"- **{doc_info}**, Published on {publish_date}: [{url}]({url})\n"
             f"> {quote}"
         )
 
-    return "".join(md_lines)
+    return "\n".join(md_lines)
 
 
 def format_retrieved_docs(retrieved_docs):
@@ -141,12 +140,12 @@ def format_retrieved_docs(retrieved_docs):
         effective_date = doc.get("effective_date", "")
 
         md_lines.append(
-            f"- **{display_name}** (pages {pages})"
-            f"[{url}]({url})"
+            f"- **{display_name}** (pages {pages})\n"
+            f"[{url}]({url})\n"
             f"<span style='color: #666; font-size: 0.9em;'>{snippet}...</span>"
         )
 
-    return "".join(md_lines)
+    return "\n".join(md_lines)
 
 
 # ============================================================
@@ -229,7 +228,7 @@ for msg in st.session_state["history"]:
         st.markdown(
             """
 <div class="chat-row assistant">
-<div class="avatar assistant">AI</div>
+<div class="avatar assistant">&#x1F914;</div>
 <div class="chat-bubble assistant">
             """,
             unsafe_allow_html=True,
@@ -252,7 +251,7 @@ for msg in st.session_state["history"]:
         st.markdown(
             f"""<div class="chat-row user">
                 <div class="chat-bubble user">{safe_text}</div>
-                <div class="avatar user">You</div>
+                <div class="avatar user">&#x1F464;</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -267,15 +266,15 @@ with st.container():
 
     with st.form("chat_form", clear_on_submit=True):
         user_query = st.text_input(
-            "**Ask a Question:**",
+            "💬 **Ask a Question:**",
             placeholder="e.g. When did redetermination begin for the COVID-19 Public Health Emergency unwind in New York State?",
         )
 
         col1, col2 = st.columns([1, 1])
         with col1:
-            submitted = st.form_submit_button("Submit", use_container_width=True)
+            submitted = st.form_submit_button("📤 Submit", use_container_width=True)
         with col2:
-            cleared = st.form_submit_button("Clear Chat", use_container_width=True)
+            cleared = st.form_submit_button("🧹 Clear Chat", use_container_width=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -307,7 +306,7 @@ if submitted:
                 else:
                     # --- Mock mode ---
                     answer = (
-                        "?????? Mock mode: Backend not connected."
+                        "Mock mode: Backend not connected.\n"
                         "No grounded answer can be generated. "
                         "Please connect the backend (RAG pipeline) to enable cited answers."
                     )
