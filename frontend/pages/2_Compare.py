@@ -1,4 +1,5 @@
 import streamlit as st
+from PIL import Image
 from pathlib import Path
 import sys
 import traceback
@@ -30,8 +31,20 @@ except Exception as e:
 # ============================================================
 # ========== HEADER ==========================================
 # ============================================================
-st.title("Compare Definitions")
-st.caption("Side-by-side comparison of definitions across policy and provider manual documents.")
+ROOT_DIR = Path(__file__).parent.parent
+ASSETS_DIR = ROOT_DIR / "assets"
+nys_logo_path = ASSETS_DIR / "nys_logo.png"
+
+col1, col2 = st.columns([5, 1])
+with col1:
+    st.title("Compare Definitions")
+    st.caption("Side-by-side comparison of definitions across policy and provider manual documents.")
+with col2:
+    if nys_logo_path.exists():
+        nys_logo = Image.open(nys_logo_path)
+        st.image(nys_logo, width=200)
+    else:
+        st.text("NYS Logo Missing")
 
 # ============================================================
 # ========== DISCLAIMER ======================================
