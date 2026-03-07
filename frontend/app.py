@@ -275,6 +275,40 @@ for msg in st.session_state["history"]:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================
+# ========== FOLLOW-UP QUESTION BUTTONS ======================
+# ============================================================
+# Show follow-up section only for the last assistant message
+if st.session_state["history"]:
+    last_msg = st.session_state["history"][-1]
+    if last_msg.get("role") == "assistant":
+        has_suggestions = bool(last_msg.get("followup_questions"))
+        if has_suggestions:
+            st.markdown("**Suggested follow-up questions:**")
+            cols = st.columns(len(last_msg["followup_questions"]))
+            for i, (col, q) in enumerate(zip(cols, last_msg["followup_questions"])):
+                with col:
+                    if st.button(q, key=f"followup_{i}"):
+                        st.session_state["history"].append({"role": "user", "content": q})
+                        st.session_state["pending_query"] = q
+                        st.session_state["pending_compare"] = False
+                        st.session_state["pending_is_followup"] = True
+                        st.rerun()
+
+        # Custom follow-up input (with context)
+        with st.form("followup_form", clear_on_submit=True):
+            followup_query = st.text_input(
+                "**Or ask your own follow-up:**",
+                placeholder="Type a follow-up question here (keeps conversation context)...",
+            )
+            followup_submitted = st.form_submit_button("Ask Follow-Up")
+        if followup_submitted and followup_query.strip():
+            st.session_state["history"].append({"role": "user", "content": followup_query})
+            st.session_state["pending_query"] = followup_query
+            st.session_state["pending_compare"] = False
+            st.session_state["pending_is_followup"] = True
+            st.rerun()
+
+# ============================================================
 # ========== INPUT AREA (two-line layout) ====================
 # ============================================================
 with st.container():
@@ -307,57 +341,73 @@ if cleared:
             st.error(f"Error clearing chat history: {e}")
     st.rerun()
 
-# Submit logic
+# Submit logic — phase 1: save query and rerun so the user message renders first
 if submitted or compare_submitted:
     if not user_query.strip():
         st.warning("Please enter a question before submitting.")
     else:
-        # st.session_state["history"].append({"role": "user", "content": user_query})
-        with st.spinner("Comparing definitions..." if compare_submitted else "Retrieving information..."):
+        # New question from input box → clear previous context
+        st.session_state["history"] = [{"role": "user", "content": user_query}]
+        rag_pipeline = st.session_state.get("rag_pipeline")
+        if rag_pipeline:
             try:
-                rag_pipeline = get_rag_pipeline_lazy()
-                if rag_pipeline:
-                    # --- Real backend ---
-                    if compare_submitted:
-                        result = rag_pipeline.answer_compare_definitions(
-                            user_query,
-                            concept=user_query,
-                        )
-                    else:
-                        result = rag_pipeline.answer_question(user_query, history=st.session_state["history"])
-                    answer = result.get("answer", "No answer returned.")
-                    evidence_dict = result.get("evidence_dict", {})
-                    retrieved_docs = result.get("retrieved_docs", [])
-                    if compare_submitted and isinstance(retrieved_docs, dict):
-                        policy_docs = retrieved_docs.get("policy", []) or []
-                        provider_docs = retrieved_docs.get("provider_manual", []) or []
-                        retrieved_docs = policy_docs + provider_docs
-                else:
-                    # --- Mock mode ---
-                    answer = (
-                        "⚠️ Mock mode: Backend not connected.\n"
-                        "No grounded answer can be generated. "
-                        "Please connect the backend (RAG pipeline) to enable cited answers."
-                    )
-                    evidence_dict = {}
-                    retrieved_docs = []
-                    # st.warning("⚠️ Mock mode: Backend not connected.")
-                    # st.markdown(
-                    #     "The assistant is currently running in mock mode without a live RAG backend. "
-                    #     "Please connect to the backend to generate answers."
-                    # )
-                st.session_state["history"].append({"role": "user", "content": user_query})
-                st.session_state["history"].append({
-                                                        "role": "assistant", 
-                                                        "content": answer,
-                                                        "evidence_dict": evidence_dict,
-                                                        "retrieved_docs": retrieved_docs,
-                                                        "is_compare": compare_submitted,
-                                                    })
-                st.rerun()
+                rag_pipeline.chat_history.clear()
+            except Exception:
+                pass
+        st.session_state["pending_query"] = user_query
+        st.session_state["pending_compare"] = bool(compare_submitted)
+        st.session_state["pending_is_followup"] = False
+        st.rerun()
 
-            except Exception as e:
-                st.error(f"Error: {e}")
+# Submit logic — phase 2: generate answer (runs on the rerun, user message already visible)
+if "pending_query" in st.session_state:
+    pending_query = st.session_state.pop("pending_query")
+    pending_compare = st.session_state.pop("pending_compare", False)
+    pending_is_followup = st.session_state.pop("pending_is_followup", False)
+    with st.spinner("Comparing definitions..." if pending_compare else "Retrieving information..."):
+        try:
+            rag_pipeline = get_rag_pipeline_lazy()
+            if rag_pipeline:
+                # --- Real backend ---
+                history_for_llm = st.session_state["history"] if pending_is_followup else []
+                if pending_compare:
+                    result = rag_pipeline.answer_compare_definitions(
+                        pending_query,
+                        concept=pending_query,
+                    )
+                else:
+                    result = rag_pipeline.answer_question(pending_query, history=history_for_llm)
+                answer = result.get("answer", "No answer returned.")
+                evidence_dict = result.get("evidence_dict", {})
+                retrieved_docs = result.get("retrieved_docs", [])
+                followup_questions = result.get("followup_questions", [])
+                if pending_compare and isinstance(retrieved_docs, dict):
+                    policy_docs = retrieved_docs.get("policy", []) or []
+                    provider_docs = retrieved_docs.get("provider_manual", []) or []
+                    retrieved_docs = policy_docs + provider_docs
+            else:
+                # --- Mock mode ---
+                answer = (
+                    "⚠️ Mock mode: Backend not connected.\n"
+                    "No grounded answer can be generated. "
+                    "Please connect the backend (RAG pipeline) to enable cited answers."
+                )
+                evidence_dict = {}
+                retrieved_docs = []
+                followup_questions = []
+            st.session_state["history"].append({
+                                                    "role": "assistant",
+                                                    "content": answer,
+                                                    "evidence_dict": evidence_dict,
+                                                    "retrieved_docs": retrieved_docs,
+                                                    "is_compare": pending_compare,
+                                                    "followup_questions": followup_questions,
+                                                })
+            st.rerun()
+
+        except Exception as e:
+            st.session_state["history"].pop()  # remove orphaned user message
+            st.error(f"Error: {e}")
 
 
 # ============================================================

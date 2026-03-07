@@ -152,11 +152,29 @@ Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, Y
         llm_response = self.llm_client.chat(messages=messages)
         self.chat_history.add("assistant", llm_response)
 
+        followup_questions = self._generate_followup_questions(question, llm_response)
+
         return {
             "question": question,
             "answer": llm_response,
             "retrieved_docs": final_chunks,
+            "followup_questions": followup_questions,
         }
+
+    def _generate_followup_questions(self, question: str, answer: str) -> List[str]:
+        """Generate 3 suggested follow-up questions based on the Q&A context."""
+        try:
+            prompt = (
+                f"Based on this Q&A about NYS healthcare policies, suggest exactly 3 short follow-up questions "
+                f"the user might want to ask next. Return ONLY the 3 questions, one per line, no numbering or bullets.\n\n"
+                f"Question: {question}\n\nAnswer (abbreviated): {answer[:500]}"
+            )
+            raw = self.llm_client.chat(user_prompt=prompt, temperature=0.7)
+            questions = [q.strip() for q in raw.strip().splitlines() if q.strip()]
+            return questions[:3]
+        except Exception as e:
+            print(f"[followup] Failed to generate follow-up questions: {e}")
+            return []
 
     def answer_compare_definitions(
         self,
