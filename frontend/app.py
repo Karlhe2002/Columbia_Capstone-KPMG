@@ -115,6 +115,95 @@ def format_evidence_dict(evidence_dict):
     return "".join(html_lines)
 
 
+_COMPARE_CSS = """
+<style>
+.chat-row { display: flex; align-items: flex-start; }
+.chat-bubble {
+    max-width: 95%; padding: 0.7rem 1rem; border-radius: 1rem;
+    line-height: 1.6; word-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.chat-bubble.assistant {
+    background-color: #F4F4F4; border: 1px solid #E0E0E0; color: #000;
+    border-top-left-radius: 0.3rem; font-size: 15px;
+}
+.avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: bold; background-color: #E5E7EB; margin: 0 0.5rem;
+}
+.chat-bubble table { font-size: 14px; border-collapse: collapse; width: 100%; }
+.chat-bubble table th { background-color: #E8F0FE; font-weight: 600; }
+.chat-bubble table td, .chat-bubble table th {
+    padding: 8px 12px; border: 1px solid #D0D0D0; vertical-align: top;
+}
+</style>
+"""
+
+def _wrap_compare_html(content: str) -> str:
+    """Wrap compare HTML content with inline CSS for st.html() rendering."""
+    return _COMPARE_CSS + content
+
+
+def format_compare_tables(sections):
+    """Render compare definitions result as headline + 2 HTML tables + caveats."""
+    headline = html.escape(sections.get("headline_summary", ""))
+    policy_def = sections.get("policy_definition", "N/A")
+    provider_def = sections.get("provider_manual_definition", "N/A")
+    similarities = sections.get("similarities", [])
+    differences = sections.get("differences", [])
+    caveats = sections.get("caveats")
+
+    table1 = f"""
+    <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
+      <thead>
+        <tr style="background:#E8F0FE;">
+          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Policy Definition</th>
+          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Provider Manual Definition</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def}</td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{provider_def}</td>
+        </tr>
+      </tbody>
+    </table>
+    """
+
+    sim_items = "".join(f"<li>{s}</li>" for s in similarities) or "<li>None identified</li>"
+    diff_items = "".join(f"<li>{d}</li>" for d in differences) or "<li>None identified</li>"
+
+    table2 = f"""
+    <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
+      <thead>
+        <tr style="background:#E8F0FE;">
+          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Similarities</th>
+          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Differences</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{sim_items}</ul></td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{diff_items}</ul></td>
+        </tr>
+      </tbody>
+    </table>
+    """
+
+    caveats_html = ""
+    if caveats:
+        caveats_html = f'<p style="color:#856404; background:#FFF3CD; padding:8px 12px; border-radius:4px; margin-top:0.5rem;"><b>Caveats:</b> {html.escape(str(caveats))}</p>'
+
+    return f"""
+    <p style="font-weight:600; margin-bottom:0.5rem;">{headline}</p>
+    <b>Definitions:</b>
+    {table1}
+    <b>Comparison:</b>
+    {table2}
+    {caveats_html}
+    """
+
+
 def format_retrieved_docs(retrieved_docs):
     """format retrieved_docs as HTML list"""
     if not retrieved_docs:
@@ -203,6 +292,22 @@ st.markdown(
     input, button, label, div[data-testid="stMarkdownContainer"] {
         font-size: 15px !important;
     }
+
+    /* compare definition tables */
+    .chat-bubble table {
+        font-size: 14px;
+        border-collapse: collapse;
+        width: 100%;
+    }
+    .chat-bubble table th {
+        background-color: #E8F0FE;
+        font-weight: 600;
+    }
+    .chat-bubble table td, .chat-bubble table th {
+        padding: 8px 12px;
+        border: 1px solid #D0D0D0;
+        vertical-align: top;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -218,9 +323,17 @@ for msg in st.session_state["history"]:
         text = text.replace("\n", "<br>")
     evidence_dict = msg.get("evidence_dict", {})
     is_compare = bool(msg.get("is_compare", False))
+    compare_sections = msg.get("compare_sections", {})
 
     if role == "assistant":
         formatted_evidence = format_evidence_dict(evidence_dict)
+
+        # Determine answer body: use tables for compare mode, plain text otherwise
+        if is_compare and compare_sections and not compare_sections.get("_parse_failed"):
+            answer_body = format_compare_tables(compare_sections)
+        else:
+            answer_body = text
+
         if "retrieved_docs" in msg and msg.get("retrieved_docs"):
             formatted_sources = format_retrieved_docs(msg["retrieved_docs"])
             evidence_block = ""
@@ -233,13 +346,12 @@ for msg in st.session_state["history"]:
 {formatted_evidence}
 <br>
 """
-            
+
             display_content = f"""
 <div class="chat-row assistant">
 <div class="avatar assistant">🤔</div>
 <div class="chat-bubble assistant">
-<b>Answer:</b> 
-<br>{text}<br>
+{answer_body}
 {evidence_block}
 <strong>📚 Retrieved Sources:</strong><br>
 <em style="color: #666; font-size: 0.9em;">Document snippets that were retrieved and analyzed to answer your question.</em>
@@ -249,20 +361,24 @@ for msg in st.session_state["history"]:
 </div>
 </div>
 """
-            st.markdown(display_content, unsafe_allow_html=True)
+            if is_compare and compare_sections and not compare_sections.get("_parse_failed"):
+                st.html(_wrap_compare_html(display_content))
+            else:
+                st.markdown(display_content, unsafe_allow_html=True)
         else:
-            st.markdown(
-                f"""
+            display_content = f"""
 <div class="chat-row assistant">
 <div class="avatar assistant">🤔</div>
 <div class="chat-bubble assistant">
-<b>Answer:</b> {text}
+{answer_body}
 {"" if is_compare else f"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><br>{formatted_evidence}"}
 </div>
 </div>
-""",
-                unsafe_allow_html=True,
-            )
+"""
+            if is_compare and compare_sections and not compare_sections.get("_parse_failed"):
+                st.html(_wrap_compare_html(display_content))
+            else:
+                st.markdown(display_content, unsafe_allow_html=True)
     else:
         st.markdown(
             f"""<div class="chat-row user">
@@ -381,6 +497,7 @@ if "pending_query" in st.session_state:
                 evidence_dict = result.get("evidence_dict", {})
                 retrieved_docs = result.get("retrieved_docs", [])
                 followup_questions = result.get("followup_questions", [])
+                compare_sections = result.get("compare_sections", {})
                 if pending_compare and isinstance(retrieved_docs, dict):
                     policy_docs = retrieved_docs.get("policy", []) or []
                     provider_docs = retrieved_docs.get("provider_manual", []) or []
@@ -401,6 +518,7 @@ if "pending_query" in st.session_state:
                                                     "evidence_dict": evidence_dict,
                                                     "retrieved_docs": retrieved_docs,
                                                     "is_compare": pending_compare,
+                                                    "compare_sections": compare_sections if pending_compare else {},
                                                     "followup_questions": followup_questions,
                                                 })
             st.rerun()

@@ -1,5 +1,7 @@
 # src/healthcare_rag_llm/llm/response_generator.py
 
+import json
+import re
 from typing import Dict, List, Optional
 from healthcare_rag_llm.llm.llm_client import LLMClient
 from healthcare_rag_llm.graph_builder.queries import query_chunks
@@ -266,15 +268,18 @@ Provider Manual Context Chunks (authoritative; cite only these):
 Chunks format:
 [Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
 
-Output sections (exactly):
-- Headline Summary of the 2 sources
-- Policy Definition
-- Provider Manual Definition
-- Comparison (similarities and differences)
-- Evidence (quoted)
-- Caveats (if any)
-Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, YYYY].
-If either side has insufficient evidence, state that explicitly.
+Output as a valid JSON object with exactly these keys:
+{{
+  "headline_summary": "1-2 sentence summary comparing both sources",
+  "policy_definition": "Policy definition with inline citations [doc_title:page - date]",
+  "provider_manual_definition": "Provider manual definition with inline citations",
+  "similarities": ["similarity point 1 with citation", "similarity point 2"],
+  "differences": ["difference point 1 with citation", "difference point 2"],
+  "caveats": "Any caveats, or null if none"
+}}
+Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
+Each field must have inline citations like [doc_title or doc_title:page — Mon DD, YYYY].
+If either side has insufficient evidence, state that explicitly in the relevant field.
 """.strip()
 
         messages = []
@@ -288,13 +293,38 @@ If either side has insufficient evidence, state that explicitly.
 
         llm_response = self.llm_client.chat(messages=messages)
         self.chat_history.add("assistant", llm_response)
+        compare_sections = self._parse_compare_response(llm_response)
 
         return {
             "question": question,
             "concept": concept,
             "answer": llm_response,
+            "compare_sections": compare_sections,
             "retrieved_docs": {
                 "policy": policy_final,
                 "provider_manual": provider_manual_final,
             },
         }
+
+    @staticmethod
+    def _parse_compare_response(llm_response: str) -> Dict:
+        """Parse structured JSON from compare definitions LLM response."""
+        cleaned = re.sub(r'^```(?:json)?\s*', '', llm_response.strip())
+        cleaned = re.sub(r'\s*```$', '', cleaned)
+        try:
+            parsed = json.loads(cleaned)
+        except json.JSONDecodeError:
+            return {
+                "headline_summary": llm_response,
+                "policy_definition": "",
+                "provider_manual_definition": "",
+                "similarities": [],
+                "differences": [],
+                "caveats": None,
+                "_parse_failed": True,
+            }
+        for key in ("similarities", "differences"):
+            val = parsed.get(key, [])
+            if isinstance(val, str):
+                parsed[key] = [val] if val else []
+        return parsed
