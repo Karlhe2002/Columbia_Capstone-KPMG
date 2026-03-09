@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import traceback
 import html
+import markdown
 
 # ============================================================
 # ========== PATH SETUP ======================================
@@ -101,35 +102,40 @@ def get_rag_pipeline_lazy():
 def format_evidence_dict(evidence_dict):
     if not evidence_dict:
         return "No evidence returned."
-    md_lines = []
+    html_lines = []
     for _, ev in evidence_dict.items():
-        doc_info = ev.get("doc_info", "Unknown")
-        quote = ev.get("quote", "")
-        publish_date = ev.get("publish_date", "N/A")
-        url = ev.get("url", "N/A")
-        md_lines.append(
-            f"- **{doc_info}**, Published on {publish_date}: [{url}]({url})\n"
-            f"> {quote}"
+        doc_info = html.escape(str(ev.get("doc_info", "Unknown")))
+        quote = html.escape(str(ev.get("quote", ""))).replace("\n", "<br>")
+        publish_date = html.escape(str(ev.get("publish_date", "N/A")))
+        url = html.escape(str(ev.get("url", "N/A")))
+        html_lines.append(
+            "<li>"
+            f"<strong>{doc_info}</strong>, Published on {publish_date}: "
+            f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{url}</a>"
+            f"<div style=\"margin-top:0.35rem; padding-left:0.75rem; border-left:3px solid #E0E0E0; color:#333;\">{quote}</div>"
+            "</li>"
         )
-    return "\n".join(md_lines)
+    return "\n".join(html_lines)
 
 def format_retrieved_docs(retrieved_docs):
     if not retrieved_docs:
         return ""
-    md_lines = []
+    html_lines = []
     for doc in retrieved_docs:
-        title = doc.get("title", "")
-        doc_id = doc.get("doc_id", "Unknown")
+        title = html.escape(str(doc.get("title", "")))
+        doc_id = html.escape(str(doc.get("doc_id", "Unknown")))
         display_name = title if title else doc_id
-        url = doc.get("url", "N/A")
-        pages = str(doc.get("pages", "N/A"))
-        snippet = doc.get("text", "")[:300]
-        md_lines.append(
-            f"- **{display_name}** (pages {pages})\n"
-            f"[{url}]({url})\n"
-            f"<span style='color: #666; font-size: 0.9em;'>{snippet}...</span>"
+        url = html.escape(str(doc.get("url", "N/A")))
+        pages = html.escape(str(doc.get("pages", "N/A")))
+        snippet = html.escape(str(doc.get("text", ""))[:300]).replace("\n", " ")
+        html_lines.append(
+            "<li>"
+            f"<strong>{display_name}</strong> (pages {pages})<br>"
+            f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{url}</a><br>"
+            f"<span style=\"color:#666; font-size:0.9em;\">{snippet}...</span>"
+            "</li>"
         )
-    return "\n".join(md_lines)
+    return "\n".join(html_lines)
 
 _COMPARE_CSS = """
 <style>
@@ -158,6 +164,14 @@ _COMPARE_CSS = """
 def _wrap_compare_html(content: str) -> str:
     """Wrap compare HTML content with inline CSS for st.html() rendering."""
     return _COMPARE_CSS + content
+
+
+def markdown_to_html(md_text: str) -> str:
+    """Convert markdown to HTML while escaping raw HTML for safety."""
+    if not md_text:
+        return ""
+    safe_md = html.escape(md_text)
+    return markdown.markdown(safe_md, extensions=["extra", "sane_lists"])
 
 
 def format_compare_tables(sections):
@@ -278,21 +292,28 @@ for msg in st.session_state["compare_history"]:
     text = msg["content"]
 
     if role == "assistant":
+        evidence_dict = msg.get("evidence_dict", {})
+        formatted_evidence = format_evidence_dict(evidence_dict)
         retrieved_docs = msg.get("retrieved_docs", [])
         formatted_sources = format_retrieved_docs(retrieved_docs) if retrieved_docs else ""
         compare_sections = msg.get("compare_sections", {})
         is_followup = bool(msg.get("is_followup", False))
 
         answer_body = text
+        answer_body_is_html = False
         if (not is_followup) and compare_sections and not compare_sections.get("_parse_failed"):
             answer_body = format_compare_tables(compare_sections)
+            answer_body_is_html = True
+
+        answer_body_html = answer_body if answer_body_is_html else markdown_to_html(answer_body)
 
         if retrieved_docs:
             display_content = f"""
 <div class="chat-row assistant">
 <div class="avatar assistant">&#x1F914;</div>
 <div class="chat-bubble assistant">
-{answer_body}
+{answer_body_html}
+{"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><ul style='margin-top:0.5rem; padding-left:1.5rem;'>" + formatted_evidence + "</ul>" if evidence_dict else ""}
 <strong>&#x1F4DA; Retrieved Sources:</strong><br>
 <em style="color: #666; font-size: 0.9em;">Document snippets that were retrieved and analyzed to answer your question.</em>
 <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
@@ -310,7 +331,8 @@ for msg in st.session_state["compare_history"]:
 <div class="chat-row assistant">
 <div class="avatar assistant">&#x1F914;</div>
 <div class="chat-bubble assistant">
-{answer_body}
+{answer_body_html}
+{"" if not evidence_dict else f"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_evidence}</ul>"}
 </div>
 </div>
 """

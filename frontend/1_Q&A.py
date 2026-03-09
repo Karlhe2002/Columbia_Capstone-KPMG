@@ -108,19 +108,22 @@ def format_evidence_dict(evidence_dict):
     if not evidence_dict:
         return "No evidence returned."
 
-    md_lines = []
+    html_lines = []
     for i, (key, ev) in enumerate(evidence_dict.items(), 1):
-        doc_info = ev.get("doc_info", "Unknown")
-        quote = ev.get("quote", "")
-        publish_date = ev.get("publish_date", "N/A")
-        url = ev.get("url", "N/A")
+        doc_info = html.escape(str(ev.get("doc_info", "Unknown")))
+        quote = html.escape(str(ev.get("quote", ""))).replace("\n", "<br>")
+        publish_date = html.escape(str(ev.get("publish_date", "N/A")))
+        url = html.escape(str(ev.get("url", "N/A")))
 
-        md_lines.append(
-            f"- **{doc_info}**, Published on {publish_date}: [{url}]({url})\n"
-            f"> {quote}"
+        html_lines.append(
+            "<li>"
+            f"<strong>{doc_info}</strong>, Published on {publish_date}: "
+            f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{url}</a>"
+            f"<div style=\"margin-top:0.35rem; padding-left:0.75rem; border-left:3px solid #E0E0E0; color:#333;\">{quote}</div>"
+            "</li>"
         )
 
-    return "\n".join(md_lines)
+    return "\n".join(html_lines)
 
 
 def format_retrieved_docs(retrieved_docs):
@@ -128,24 +131,25 @@ def format_retrieved_docs(retrieved_docs):
     if not retrieved_docs:
         return ""
 
-    md_lines = []
+    html_lines = []
     for doc in retrieved_docs:
-        title = doc.get("title", "")
-        doc_id = doc.get("doc_id", "Unknown")
+        title = html.escape(str(doc.get("title", "")))
+        doc_id = html.escape(str(doc.get("doc_id", "Unknown")))
         display_name = title if title else doc_id
-        url = doc.get("url", "N/A")
+        url = html.escape(str(doc.get("url", "N/A")))
 
-        pages = str(doc.get("pages", "N/A"))
-        snippet = doc.get("text", "")[:300]
-        effective_date = doc.get("effective_date", "")
+        pages = html.escape(str(doc.get("pages", "N/A")))
+        snippet = html.escape(str(doc.get("text", ""))[:300]).replace("\n", " ")
 
-        md_lines.append(
-            f"- **{display_name}** (pages {pages})\n"
-            f"[{url}]({url})\n"
-            f"<span style='color: #666; font-size: 0.9em;'>{snippet}...</span>"
+        html_lines.append(
+            "<li>"
+            f"<strong>{display_name}</strong> (pages {pages})<br>"
+            f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{url}</a><br>"
+            f"<span style=\"color:#666; font-size:0.9em;\">{snippet}...</span>"
+            "</li>"
         )
 
-    return "\n".join(md_lines)
+    return "\n".join(html_lines)
 
 
 # ============================================================
@@ -239,12 +243,18 @@ for msg in st.session_state["history"]:
             st.markdown("")
             st.markdown("**Evidence:**")
             st.markdown("_Direct quotes from official documents that support the answer above._")
-            st.markdown(formatted_evidence)
+            st.markdown(
+                f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_evidence}</ul>",
+                unsafe_allow_html=True,
+            )
         if retrieved_docs:
             st.markdown("")
             st.markdown("**Retrieved Sources:**")
             st.markdown("_Document snippets that were retrieved and analyzed to answer your question._")
-            st.markdown(formatted_sources, unsafe_allow_html=True)
+            st.markdown(
+                f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_sources}</ul>",
+                unsafe_allow_html=True,
+            )
         st.markdown("</div></div>", unsafe_allow_html=True)
     else:
         safe_text = html.escape(text)
