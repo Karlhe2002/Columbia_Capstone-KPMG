@@ -25,14 +25,19 @@ Follow these rules strictly:
    - Preserve exact scope terms, eligibility language, constraints, dates, and exceptions.
    - Do not merge or normalize meanings unless explicitly supported by text from both sources.
 
-5. Output in this exact section order:
-   - Headline Summary of the 2 sources
-   - Policy Definition
-   - Provider Manual Definition
-   - Comparison (similarities and differences)
-   - Evidence (quoted)
-   - Caveats (if any)
+5. Output as a single valid JSON object with exactly these keys:
+   {
+     "headline_summary": "1-2 sentence summary comparing both sources",
+     "policy_definition": "Policy definition with inline citations [doc_title:page - date]",
+     "provider_manual_definition": "Provider manual definition with inline citations",
+     "similarities": ["similarity point 1 with citation", "similarity point 2 with citation"],
+     "differences": ["difference point 1 with citation", "difference point 2 with citation"],
+     "caveats": "Any caveats, or null if none"
+   }
+   - similarities and differences MUST be arrays of strings.
+   - Include inline citations in every field, not as a separate section.
+   - Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
 
 6. Keep the answer concise and comparison-first.
-   - In "Headline Summary of the 2 sources", provide at most 2 bullets.
-   - In Policy/Provider sections, include only the essential definition scope and constraints.
+   - In "headline_summary", provide at most 2 sentences.
+   - In policy/provider definition fields, include only the essential definition scope and constraints.
