@@ -9,6 +9,7 @@ LLM-based evaluation for answer_compare_definitions outputs.
    (headline_summary, policy_definition, provider_manual_definition, similarities, differences, caveats)
 """
 
+import inspect
 import json
 import re
 from typing import Dict, List, Any, Optional
@@ -16,6 +17,27 @@ from pathlib import Path
 
 from healthcare_rag_llm.evaluate.llm_evaluate import LLMEvaluator
 from healthcare_rag_llm.llm.llm_client import LLMClient
+from healthcare_rag_llm.llm.response_generator import ResponseGenerator
+
+_compare_keys_cache: Optional[List[str]] = None
+
+
+def _get_compare_output_required_keys() -> List[str]:
+    """Extract required JSON keys from response_generator prompt (no modification of source)."""
+    global _compare_keys_cache
+    if _compare_keys_cache is not None:
+        return _compare_keys_cache
+    src = inspect.getsource(ResponseGenerator.answer_compare_definitions)
+    schema_start = src.find("exactly these keys")
+    schema_end = src.find("}}", schema_start) + 2
+    block = src[schema_start:schema_end]
+    keys = re.findall(r'"([a-z_]+)"\s*:', block)
+    seen = []
+    for k in keys:
+        if k not in seen:
+            seen.append(k)
+    _compare_keys_cache = seen
+    return _compare_keys_cache
 
 
 def _parse_json_response(response: str, metric_name: str) -> Dict[str, Any]:
@@ -42,17 +64,6 @@ def _parse_json_response(response: str, metric_name: str) -> Dict[str, Any]:
             "reasoning": f"Failed to parse LLM response: {str(e)}",
             "error": str(e),
         }
-
-
-# Expected schema from response_generator.answer_compare_definitions
-_COMPARE_OUTPUT_REQUIRED_KEYS = [
-    "headline_summary",
-    "policy_definition",
-    "provider_manual_definition",
-    "similarities",
-    "differences",
-    "caveats",
-]
 
 
 def _evaluate_format_compliance(raw_answer: str) -> Dict[str, Any]:
@@ -92,7 +103,7 @@ def _evaluate_format_compliance(raw_answer: str) -> Dict[str, Any]:
             "reasoning": "Expected a JSON object, not array or primitive.",
         }
 
-    for key in _COMPARE_OUTPUT_REQUIRED_KEYS:
+    for key in _get_compare_output_required_keys():
         if key not in parsed:
             issues.append(f"Missing required key: {key}")
             score -= 0.2
@@ -116,7 +127,7 @@ def _evaluate_format_compliance(raw_answer: str) -> Dict[str, Any]:
                     issues.append(f"'{key}' must be string or null, got {type(val).__name__}")
                     score -= 0.1
 
-    extra = set(parsed.keys()) - set(_COMPARE_OUTPUT_REQUIRED_KEYS)
+    extra = set(parsed.keys()) - set(_get_compare_output_required_keys())
     if extra:
         issues.append(f"Extra keys (not in schema): {sorted(extra)}")
         score -= 0.05 * len(extra)
