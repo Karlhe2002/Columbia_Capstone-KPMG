@@ -1,0 +1,52 @@
+{
+  "Test_query_compare_1": {
+    "question": "Compare Medicare versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_2": {
+    "question": "Compare Medicare versus provider manual rules for when a pharmacy must bill Medicare before billing Medicaid.",
+    "concept": "billing Medicare before Medicaid",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_3": {
+    "question": "Compare Medicare versus provider manual guidance for Medicare Part B outpatient drug coverage.",
+    "concept": "Medicare Part B outpatient drug coverage",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_4": {
+    "question": "Compare Medicare versus provider manual guidance for Medicare Part D drug coverage exclusions and Medicaid secondary coverage.",
+    "concept": "Medicare Part D exclusions and Medicaid secondary coverage",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_5": {
+    "question": "Compare Medicare versus provider manual rules for crossover claims and whether prior approval is still required after Medicare payment.",
+    "concept": "crossover claims and prior approval after Medicare payment",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_6": {
+    "question": "Compare Medicare versus provider manual guidance on pharmacy responsibilities for coordination of benefits.",
+    "concept": "pharmacy coordination of benefits responsibilities",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_7": {
+    "question": "Compare Medicare versus provider manual guidance for coinsurance, deductibles, and balance billing for dual eligible members.",
+    "concept": "coinsurance deductibles and balance billing for dual eligible members",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_8": {
+    "question": "Compare Medicare versus provider manual guidance for home infusion drug coverage and billing responsibilities.",
+    "concept": "home infusion drug coverage and billing responsibilities",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_9": {
+    "question": "Compare Medicare versus provider manual guidance for medical supply or DME-related drug billing under Part B.",
+    "concept": "DME-related drug billing under Medicare Part B",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_10": {
+    "question": "Compare Medicare versus provider manual guidance for drugs that are covered by Medicare but limited or excluded under Medicaid pharmacy benefits.",
+    "concept": "Medicare-covered drugs limited or excluded under Medicaid pharmacy benefits",
+    "task_type": "compare_definition"
+  }
+}

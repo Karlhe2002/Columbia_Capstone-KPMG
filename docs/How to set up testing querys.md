@@ -61,3 +61,51 @@ Each file should contain a dictionary with test queries as keys. Each test query
 - Ensure all document names in the `document` field match actual files in your knowledge base
 - Use descriptive names for test query keys to easily identify them in evaluation results
 - The `Answer` field should contain accurate, reference-standard responses for meaningful evaluation
+
+## 4. Running Prompt Tests with `llm_query.py`
+
+Use [`scripts/llm_query.py`](/c:/Users/22840/OneDrive/Desktop/KPMG/Columbia_Capstone-KPMG/scripts/llm_query.py) when you want to quickly test prompt behavior without building a full evaluation JSON file.
+
+### Run the original QA prompt
+
+```powershell
+python scripts/llm_query.py --mode qa
+```
+
+This runs the standard `answer_question(...)` flow.
+
+### Run the comparison prompt
+
+```powershell
+python scripts/llm_query.py --mode compare
+```
+
+This runs the `answer_compare_definitions(...)` flow, which uses `configs/system_prompt_compare.txt` and retrieves from both:
+
+- `policy` documents
+- `provider_manual` documents
+
+### Run one custom QA question
+
+```powershell
+python scripts/llm_query.py --mode qa --question "When did the pharmacy carve out occur?"
+```
+
+### Run one custom compare question
+
+```powershell
+python scripts/llm_query.py --mode compare --question "Compare Medicare versus provider manual guidance for dual eligible pharmacy claims." --concept "dual eligible pharmacy claims"
+```
+
+### Optional retrieval settings
+
+```powershell
+python scripts/llm_query.py --mode compare --top-k-per-source 5 --rerank-top-k 20
+```
+
+Notes:
+
+- Use `--mode qa` for normal single-answer testing.
+- Use `--mode compare` for side-by-side policy vs provider manual testing.
+- In compare mode, `--concept` is optional. If omitted, the script uses the question text as the concept.
+- The JSON format described above is still the correct format for stored evaluation query files such as `data/testing_queries/testing_query.json`.
