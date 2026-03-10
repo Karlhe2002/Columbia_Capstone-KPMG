@@ -52,6 +52,28 @@ def _parse_json_response(response: str, metric_name: str) -> Dict[str, Any]:
                 result = json.loads(json_str)
             except json.JSONDecodeError:
                 result = json.loads(json_str, strict=False)
+            
+            # Validate required fields
+            required_keys = ["headline_summary", "policy_definition", "provider_manual_definition", "similarities", "differences", "caveats"]
+            for key in required_keys:
+                if key not in result:
+                    raise ValueError(f"Missing required field: {key}")
+            
+            # Validate field types
+            if not isinstance(result.get("headline_summary"), str):
+                raise ValueError("'headline_summary' must be a string")
+            if not isinstance(result.get("policy_definition"), str):
+                raise ValueError("'policy_definition' must be a string")
+            if not isinstance(result.get("provider_manual_definition"), str):
+                raise ValueError("'provider_manual_definition' must be a string")
+            if not isinstance(result.get("similarities"), list):
+                raise ValueError("'similarities' must be a list")
+            if not isinstance(result.get("differences"), list):
+                raise ValueError("'differences' must be a list")
+            if result.get("caveats") is not None and not isinstance(result.get("caveats"), str):
+                raise ValueError("'caveats' must be a string or null")
+            
+            # Validate score field
             if "score" not in result:
                 raise ValueError("Missing 'score' field")
             result["score"] = max(0.0, min(1.0, float(result["score"])))
