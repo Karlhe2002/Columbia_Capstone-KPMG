@@ -1,6 +1,7 @@
 # src/healthcare_rag_llm/graph_builder/neo4j_loader.py
 import os
 from neo4j import GraphDatabase
+from neo4j.exceptions import AuthError, ServiceUnavailable
 from dotenv import load_dotenv
 
 # Load Docker .env
@@ -25,6 +26,22 @@ class Neo4jConnector:
             raise ValueError("ERROR: Neo4j password not set. Check your .env file.")
 
         self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
+        try:
+            self.driver.verify_connectivity()
+        except ServiceUnavailable as exc:
+            self.driver.close()
+            raise RuntimeError(
+                "Neo4j is not reachable at "
+                f"{self.uri}. Start the database first. "
+                "For this project, run `docker compose up -d` from the `docker/` directory "
+                "after installing and starting Docker Desktop."
+            ) from exc
+        except AuthError as exc:
+            self.driver.close()
+            raise RuntimeError(
+                "Neo4j credentials were rejected. Check `docker/.env` and ensure "
+                "`NEO4J_AUTH` matches the running Neo4j instance."
+            ) from exc
 
     def close(self):
         self.driver.close()
