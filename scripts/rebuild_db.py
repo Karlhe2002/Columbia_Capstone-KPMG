@@ -5,13 +5,14 @@ import os, shutil, subprocess
 from healthcare_rag_llm.pipelines.ingest_parse import run_pipeline as parse_pipeline
 from healthcare_rag_llm.chunking.pattern_chunking import asterisk_separate_chunking
 from healthcare_rag_llm.chunking.semantic_chunking import semantic_chunking
-from healthcare_rag_llm.chunking.section_chunking import section_chunking
+from healthcare_rag_llm.chunking.section_semantic_chunking import section_semantic_chunking
 from healthcare_rag_llm.graph_builder.neo4j_loader import Neo4jConnector
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 CHUNK_DIR = ROOT / "data" / "chunks" / "mixed_chunking_result"
+PHARMACY_CHUNK_DIR = ROOT / "data" / "chunks" / "section_semantic_chunking_result"
 
 RAW_MEDICAID = ROOT / "data" / "raw" / "Childrens Evolution of Care" / "State" / "Medicaid Updates"
 OUT_MEDICAID = ROOT / "data" / "processed" / "medicaid update"
@@ -19,7 +20,8 @@ OUT_MEDICAID = ROOT / "data" / "processed" / "medicaid update"
 RAW_WAIVER = ROOT / "data" / "raw" / "Childrens Evolution of Care" / "State" / "Waivers" / "Childrens Waiver"
 OUT_WAIVER = ROOT / "data" / "processed" / "children waiver"
 
-PHARMACY_TXT = ROOT / "data" / "processed" / "pharmacy" / "Pharmacy_Policy_Guidelines.txt"
+PHARMACY_POLICY_TXT = ROOT / "data" / "processed" / "pharmacy" / "Pharmacy_Policy_Guidelines.txt"
+PHARMACY_BILLING_TXT = ROOT / "data" / "processed" / "pharmacy_billing" / "Pharmacy_Billing_Guidelines.txt"
 
 INGEST_GRAPH_SCRIPT = ROOT / "scripts" / "ingest_graph.py"
 METADATA_FILE = ROOT / "data" / "metadata" / "metadata_filled.csv"
@@ -85,22 +87,44 @@ def main():
         verbose=True
     )
 
-    # section chunk Pharmacy
-    section_chunking(
-        txt_path=str(PHARMACY_TXT),
-        output_dir=str(CHUNK_DIR),
-        category="pharmacy",
+    # section+semantic chunk Pharmacy Policy Guidelines
+    section_semantic_chunking(
+        txt_path=str(PHARMACY_POLICY_TXT),
+        output_dir=str(PHARMACY_CHUNK_DIR),
+        category="Pharmacy",
+        max_chunk_chars=1200,
+        similarity_threshold=0.35,
+        preset="pharmacy_policy",
+        verbose=True,
+    )
+
+    # section+semantic chunk Pharmacy Billing Guidelines
+    section_semantic_chunking(
+        txt_path=str(PHARMACY_BILLING_TXT),
+        output_dir=str(PHARMACY_CHUNK_DIR),
+        category="Pharmacy Billing",
+        max_chunk_chars=1200,
+        similarity_threshold=0.35,
+        preset="pharmacy_billing",
         verbose=True,
     )
 
     # reset graph
     reset_graph()
 
-    # ingest graph using subprocess
+    # ingest Medicaid + Waiver chunks
     subprocess.run([
         "python",
         str(INGEST_GRAPH_SCRIPT),
         "--chunk_dir", str(CHUNK_DIR),
+        "--meta_file", str(METADATA_FILE)
+    ], check=True)
+
+    # ingest Pharmacy chunks
+    subprocess.run([
+        "python",
+        str(INGEST_GRAPH_SCRIPT),
+        "--chunk_dir", str(PHARMACY_CHUNK_DIR),
         "--meta_file", str(METADATA_FILE)
     ], check=True)
 

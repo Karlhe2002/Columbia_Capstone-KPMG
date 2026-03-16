@@ -3,7 +3,44 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
+
+
+# ── Document-specific presets ────────────────────────────────────────────
+
+PHARMACY_POLICY_PRESET = {
+    "footer_patterns": [
+        r"\n?\d{4}-\d+\s+\w+\s+\d{4}\s+\d+\s*",
+    ],
+    "header_patterns": [
+        r"\nPolicy Guidelines\nNYRx\n?",
+    ],
+    "page_marker_regex": r"\d{4}-\d+\s+\w+\s+\d{4}\s+(\d+)",
+}
+
+PHARMACY_BILLING_PRESET = {
+    "footer_patterns": [
+        r"\nPHARMACY\nVersion \d{4} - \d+ \d+/\d+/\d{4}\nPage \d+ of \d+\n?",
+    ],
+    "header_patterns": [
+        r"^EMEDNY INFORMATION\s*$",
+        r"^TABLE OF CONTENTS\s*$",
+        r"^PURPOSE STATEMENT\s*$",
+        r"^CLAIMS SUBMISSION\s*$",
+        r"^REMITTANCE ADVICE\s*$",
+        r"^APPENDIX [AB] [A-Z ]+\s*$",
+    ],
+    "page_marker_regex": r"Page (\d+) of \d+",
+    "artifacts": [
+        r"\[Type text\]\s*",
+        r"PPENDIX\nA [AB]\n[A-Z ]+ [A-Z]+\nC S\n?",
+    ],
+}
+
+PRESETS = {
+    "pharmacy_policy": PHARMACY_POLICY_PRESET,
+    "pharmacy_billing": PHARMACY_BILLING_PRESET,
+}
 
 
 def section_chunking(
@@ -12,23 +49,20 @@ def section_chunking(
     doc_id: str = "",
     category: str = "pharmacy",
     max_chunk_chars: int = 0,
+    preset: Optional[str] = None,
     verbose: bool = True,
 ) -> None:
     """
-    Section-based chunking that splits a policy-guidelines TXT file at
-    subsection boundaries identified from its Table of Contents.
+    Section-based chunking that splits a TXT file at subsection boundaries
+    identified from its Table of Contents.
 
-    Each ToC entry (primary section like "1.0 General Pharmacy Policy" and
-    subsections like "Required Prescribing Information") becomes one chunk.
-    If *max_chunk_chars* > 0, oversized sections are further split by size.
+    Each ToC entry becomes one chunk. If *max_chunk_chars* > 0, oversized
+    sections are further split by size.
 
-    Output:
-      <output_dir>/<stem>.chunks.jsonl
-    Record schema:
-      {
-        "doc_id", "chunk_id", "char_start", "char_end",
-        "pages", "text", "chunk_type", "category", "section_title"
-      }
+    Args:
+        preset: Name of a document preset (e.g. "pharmacy_policy",
+                "pharmacy_billing") for page header/footer patterns.
+                If None, auto-detects based on file content.
     """
     txt_path = Path(txt_path)
     output_dir = Path(output_dir)
@@ -39,6 +73,9 @@ def section_chunking(
 
     raw_text = txt_path.read_text(encoding="utf-8")
 
+    # Auto-detect preset if not specified
+    config = _get_config(raw_text, preset)
+
     # ── 1. Parse ToC to get ordered section/subsection titles ──
     titles = _parse_toc(raw_text)
     if not titles:
@@ -47,31 +84,17 @@ def section_chunking(
         return
 
     # ── 2. Build page-marker map (position → page number) before cleaning ──
-    page_markers = _build_page_marker_map(raw_text)
+    page_markers = _build_page_marker_map(raw_text, config["page_marker_regex"])
 
-    # ── 3. Locate the body start (first occurrence of "1.0 " after the ToC) ──
-    toc_end_match = re.search(
-        r"\n6\.0 Definitions\b[^\n]*\.\.*\s*\d+",  # last ToC line
-        raw_text,
-    )
-    if toc_end_match:
-        body_search_start = toc_end_match.end()
-    else:
-        body_search_start = 0
-
-    first_section_match = re.search(r"^1\.0\s", raw_text[body_search_start:], re.MULTILINE)
-    if first_section_match:
-        body_start = body_search_start + first_section_match.start()
-    else:
-        body_start = 0
-
+    # ── 3. Locate the body start ──
+    body_start = _find_body_start(raw_text, titles)
     body_raw = raw_text[body_start:]
 
     # ── 4. Clean page headers / footers from body text ──
-    body_clean = _clean_page_markers(body_raw)
+    body_clean = _clean_page_markers(body_raw, config)
 
     # ── 5. Find each title position in the cleaned body and split ──
-    split_points: List[Tuple[str, int]] = []  # (title, char_offset_in_clean)
+    split_points: List[Tuple[str, int]] = []
     search_from = 0
     for title in titles:
         escaped = re.escape(title)
@@ -97,13 +120,11 @@ def section_chunking(
         if not chunk_text:
             continue
 
-        # Estimate pages from the raw text markers
         raw_start = body_start + start
         raw_end = body_start + end
         pages = _estimate_pages(page_markers, raw_start, raw_end, len(raw_text))
 
         if max_chunk_chars > 0 and len(chunk_text) > max_chunk_chars:
-            # Secondary split for oversized sections
             offset = 0
             while offset < len(chunk_text):
                 sub_text = chunk_text[offset : offset + max_chunk_chars]
@@ -156,58 +177,105 @@ def section_chunking(
 # ── helpers ──────────────────────────────────────────────────────────────
 
 
+def _get_config(text: str, preset: Optional[str] = None) -> dict:
+    """Return document-specific config, auto-detecting if preset is None."""
+    if preset and preset in PRESETS:
+        return PRESETS[preset]
+
+    # Auto-detect based on content
+    if "eMedNY Billing Guidelines" in text or "Page 1 of" in text:
+        return PRESETS["pharmacy_billing"]
+    if "Policy Guidelines" in text and "NYRx" in text:
+        return PRESETS["pharmacy_policy"]
+
+    # Fallback: empty patterns (no cleaning)
+    return {
+        "footer_patterns": [],
+        "header_patterns": [],
+        "page_marker_regex": r"Page (\d+) of \d+",
+    }
+
+
 def _parse_toc(text: str) -> List[str]:
     """Extract ordered section/subsection titles from the Table of Contents.
 
-    ToC entries look like:
+    Works generically for any document with a ToC section containing lines like:
         1.0 General Pharmacy Policy ................ 4
-        Required Prescribing Information .......... 4
+        2.1 Electronic Claims ...................... 5
+        Appendix A Claim Samples .................. 22
     """
     # Find the ToC region
     toc_start = text.find("Table of Contents")
     if toc_start == -1:
+        toc_start = text.find("TABLE OF CONTENTS")
+    if toc_start == -1:
         return []
 
-    # ToC ends roughly where the body begins (first "1.0" that is NOT in ToC)
-    # We search for the pattern "1.0 " at line start after a page marker
-    toc_region_end = text.find("\n1.0 General Pharmacy Policy\n", toc_start + 200)
-    if toc_region_end == -1:
-        toc_region_end = toc_start + 5000  # fallback
-
-    toc_text = text[toc_start:toc_region_end]
-
-    # Match lines: "Title ..... page_number"
+    # Match ToC lines: "Title ..... page_number"
     toc_re = re.compile(r"^(.+?)\s*\.{3,}\s*(\d+)\s*$", re.MULTILINE)
-    titles = []
-    for m in toc_re.finditer(toc_text):
-        title = m.group(1).strip()
-        if title:
-            titles.append(title)
 
+    # Collect all ToC entries from toc_start onwards
+    all_entries = []
+    for m in toc_re.finditer(text[toc_start:]):
+        title = m.group(1).strip()
+        if title and title.upper() != "TABLE OF CONTENTS":
+            all_entries.append((title, m.end()))
+
+    if not all_entries:
+        return []
+
+    # ToC region ends when we stop finding dotted entries.
+    # Use the last ToC entry position to define the boundary.
+    titles = [t for t, _ in all_entries]
     return titles
 
 
-def _clean_page_markers(text: str) -> str:
-    """Remove recurring page footers and headers from the body text.
+def _find_body_start(text: str, titles: List[str]) -> int:
+    """Find where the document body starts by locating the first ToC title
+    in the text AFTER the ToC region itself."""
+    if not titles:
+        return 0
 
-    Patterns removed:
-        - Page footer:  "2025-3 October 2025 <page_num>"
-        - Page header:  "Policy Guidelines\\nNYRx"
-    """
-    # Footer pattern: "2025-3 October 2025 NN" (possibly at line start)
-    text = re.sub(r"\n?\d{4}-\d+\s+\w+\s+\d{4}\s+\d+\s*", "\n", text)
-    # Header pattern: "Policy Guidelines\nNYRx" (repeated at top of each page)
-    text = re.sub(r"\nPolicy Guidelines\nNYRx\n?", "\n", text)
+    first_title = titles[0]
+
+    # Find all occurrences of the first title
+    pattern = re.compile(rf"^{re.escape(first_title)}\s*$", re.MULTILINE)
+    matches = list(pattern.finditer(text))
+
+    if len(matches) >= 2:
+        # Second occurrence is the body start (first is in the ToC)
+        return matches[1].start()
+    elif len(matches) == 1:
+        return matches[0].start()
+
+    return 0
+
+
+def _clean_page_markers(text: str, config: dict) -> str:
+    """Remove page footers and headers using patterns from config."""
+    for pattern in config.get("footer_patterns", []):
+        text = re.sub(pattern, "\n", text)
+
+    for pattern in config.get("header_patterns", []):
+        text = re.sub(pattern, "\n", text, flags=re.MULTILINE)
+
+    # Remove any extra artifacts
+    for pattern in config.get("artifacts", []):
+        text = re.sub(pattern, "", text)
+
     # Collapse runs of 3+ newlines into 2
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text
 
 
-def _build_page_marker_map(text: str) -> List[Tuple[int, int]]:
+def _build_page_marker_map(
+    text: str,
+    page_marker_regex: str = r"\d{4}-\d+\s+\w+\s+\d{4}\s+(\d+)",
+) -> List[Tuple[int, int]]:
     """Return a sorted list of (char_position, page_number) extracted from
-    page footer markers like '2025-3 October 2025 19'."""
+    page markers matching the given regex. Group 1 must capture the page number."""
     markers: List[Tuple[int, int]] = []
-    for m in re.finditer(r"\d{4}-\d+\s+\w+\s+\d{4}\s+(\d+)", text):
+    for m in re.finditer(page_marker_regex, text):
         page_no = int(m.group(1))
         markers.append((m.start(), page_no))
     return markers
@@ -219,16 +287,13 @@ def _estimate_pages(
     char_end: int,
     text_len: int,
 ) -> List[int]:
-    """Estimate which pages a character span covers based on page footer markers."""
+    """Estimate which pages a character span covers based on page markers."""
     if not markers:
         return []
 
     pages: List[int] = []
 
-    # Each marker at position P with page N means: content *before* P is on page N.
-    # Content after the last marker on page N and before the next marker is on page N+1.
     for i, (pos, page_no) in enumerate(markers):
-        # Determine the range this page covers
         if i == 0:
             page_start = 0
         else:
@@ -236,11 +301,9 @@ def _estimate_pages(
 
         page_end = pos
 
-        # Check overlap with the chunk span
         if page_end > char_start and page_start < char_end:
             pages.append(page_no)
 
-    # Also consider content after the last marker
     if markers:
         last_pos, last_page = markers[-1]
         if last_pos < char_end and text_len > last_pos:

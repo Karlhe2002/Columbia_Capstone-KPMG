@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import numpy as np
 import nltk
@@ -12,8 +12,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from healthcare_rag_llm.chunking.section_chunking import (
     _parse_toc,
+    _find_body_start,
     _build_page_marker_map,
     _estimate_pages,
+    _get_config,
 )
 
 # Ensure NLTK data is available
@@ -37,6 +39,7 @@ def section_semantic_chunking(
     unit: str = "sentence",
     similarity_threshold: float = 0.35,
     hysteresis: float = 0.02,
+    preset: Optional[str] = None,
     verbose: bool = True,
 ) -> None:
     """
@@ -48,8 +51,10 @@ def section_semantic_chunking(
 
     Sections shorter than *max_chunk_chars* are kept as a single chunk.
 
-    Output:
-      <output_dir>/<stem>.chunks.jsonl
+    Args:
+        preset: Name of a document preset (e.g. "pharmacy_policy",
+                "pharmacy_billing") for page header/footer patterns.
+                If None, auto-detects based on file content.
     """
     txt_path = Path(txt_path)
     output_dir = Path(output_dir)
@@ -60,6 +65,9 @@ def section_semantic_chunking(
 
     raw_text = txt_path.read_text(encoding="utf-8")
 
+    # Auto-detect or use specified preset
+    config = _get_config(raw_text, preset)
+
     # ── 1. Parse ToC ──
     titles = _parse_toc(raw_text)
     if not titles:
@@ -68,26 +76,14 @@ def section_semantic_chunking(
         return
 
     # ── 2. Page marker map (before cleaning) ──
-    page_markers = _build_page_marker_map(raw_text)
+    page_markers = _build_page_marker_map(raw_text, config["page_marker_regex"])
 
     # ── 3. Locate body start ──
-    toc_end_match = re.search(
-        r"\n6\.0 Definitions\b[^\n]*\.\.*\s*\d+", raw_text
-    )
-    body_search_start = toc_end_match.end() if toc_end_match else 0
-
-    first_section_match = re.search(
-        r"^1\.0\s", raw_text[body_search_start:], re.MULTILINE
-    )
-    body_start = (
-        body_search_start + first_section_match.start()
-        if first_section_match
-        else 0
-    )
+    body_start = _find_body_start(raw_text, titles)
     body_raw = raw_text[body_start:]
 
     # ── 4. Clean page markers (replace with \n\n to preserve paragraph breaks) ──
-    body_clean = _clean_page_markers_preserve_breaks(body_raw)
+    body_clean = _clean_page_markers_preserve_breaks(body_raw, config)
 
     # ── 5. Find section split points ──
     split_points: List[Tuple[str, int]] = []
@@ -180,21 +176,24 @@ def section_semantic_chunking(
 # ── helpers ──────────────────────────────────────────────────────────────
 
 
-def _clean_page_markers_preserve_breaks(text: str) -> str:
+def _clean_page_markers_preserve_breaks(text: str, config: dict) -> str:
     """Remove page footers/headers but replace each page break with ``\\n\\n``
     so that paragraph boundaries survive for sentence/paragraph tokenisers."""
-    # Replace full page-break sequence (footer + optional blank + header)
-    # with a double newline to keep paragraph structure.
-    text = re.sub(
-        r"\n?\d{4}-\d+\s+\w+\s+\d{4}\s+\d+\s*(?:\n?Policy Guidelines\nNYRx\n?)?",
-        "\n\n",
-        text,
-    )
-    # Catch any remaining standalone headers
-    text = re.sub(r"\nPolicy Guidelines\nNYRx\n?", "\n\n", text)
+    for pattern in config.get("footer_patterns", []):
+        text = re.sub(pattern, "\n\n", text)
+
+    for pattern in config.get("header_patterns", []):
+        text = re.sub(pattern, "\n\n", text, flags=re.MULTILINE)
+
+    for pattern in config.get("artifacts", []):
+        text = re.sub(pattern, "", text)
+
     # Collapse 3+ newlines into 2
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text
+
+
+MIN_CHUNK_CHARS = 80  # chunks smaller than this get merged with their neighbour
 
 
 def _semantic_split(
@@ -280,4 +279,29 @@ def _semantic_split(
             "offset": chunk_start,
         })
 
-    return result
+    # Post-process: merge tiny chunks with their next neighbour
+    merged = []
+    i = 0
+    while i < len(result):
+        cur = result[i]
+        # If current chunk is too small and there is a next chunk, merge forward
+        while (
+            len(cur["text"]) < MIN_CHUNK_CHARS
+            and i + 1 < len(result)
+            and len(cur["text"]) + len(result[i + 1]["text"]) + 1 <= max_chunk_chars
+        ):
+            nxt = result[i + 1]
+            merged_start = min(cur["offset"], nxt["offset"])
+            merged_end = max(
+                cur["offset"] + len(cur["text"]),
+                nxt["offset"] + len(nxt["text"]),
+            )
+            cur = {
+                "text": text[merged_start:merged_end].strip(),
+                "offset": merged_start,
+            }
+            i += 1
+        merged.append(cur)
+        i += 1
+
+    return merged
