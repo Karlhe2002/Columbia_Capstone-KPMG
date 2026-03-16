@@ -21,7 +21,10 @@ pip install -e .
 
 # Start Neo4j database (required for most operations)
 cd docker
+#(Windows)
 Copy-Item .env.example .env
+#(macOS/Linux)：
+cp .env.example .env
 
 # Open docker desktop
 docker compose up -d

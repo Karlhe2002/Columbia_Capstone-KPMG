@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 import traceback
+import re
 from pathlib import Path
 import sys
 from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
@@ -87,9 +88,11 @@ def load_rag_pipeline():
     from healthcare_rag_llm.utils.api_config import APIConfigManager
     api_config_manager = APIConfigManager()
     api_config_default = api_config_manager.get_default_config()
+    provider = (api_config_default.provider or "").lower()
+    model = "deepseek-chat" if provider == "deepseek" else "gemini-2.5-flash"
     llm_client = LLMClient(
-        api_key=api_config_default.api_key,  # API key
-        model="gemini-2.5-flash",
+        api_key=api_config_default.api_key,
+        model=model,
         provider=api_config_default.provider,
         base_url=api_config_default.base_url
     )
@@ -101,6 +104,34 @@ def get_rag_pipeline_lazy():
     if "rag_pipeline" not in st.session_state:
         st.session_state["rag_pipeline"] = load_rag_pipeline()
     return st.session_state["rag_pipeline"]
+
+
+def _remove_none_caveats(text: str) -> str:
+    """
+    Remove the Caveats section only when model explicitly returns None.
+    This follows prompt contract and avoids semantic guessing.
+    """
+    # Remove one-line forms like "Caveats: None" (case-insensitive, optional markdown)
+    single_line_pattern = re.compile(
+        r"(?im)^\s*\*{0,2}caveats\*{0,2}\s*:\s*(?:\*{0,2}_?`?none`?_?\*{0,2})\s*$"
+    )
+    text = re.sub(single_line_pattern, "", text)
+
+    # Remove section forms like:
+    # Caveats:
+    # None
+    pattern = re.compile(
+        r"(?ims)^\s*\*{0,2}caveats\*{0,2}\s*:?\s*\n(?P<body>.*?)(?=^\s*\*{0,2}(answer|evidence(?:\s*\([^)]*\))?|retrieved sources?)\*{0,2}\s*:?\s*$|\Z)"
+    )
+    m = pattern.search(text)
+    if not m:
+        return text
+
+    body = m.group("body").strip()
+    normalized = re.sub(r"^[\s\-*•]+", "", body).strip().lower()
+    if normalized in {"none", "**none**", "_none_", "`none`"}:
+        return (text[:m.start()] + text[m.end():]).strip()
+    return text
 
 
 def format_evidence_dict(evidence_dict):
@@ -238,7 +269,11 @@ for msg in st.session_state["history"]:
             unsafe_allow_html=True,
         )
         st.markdown("**Answer:**")
-        st.markdown(text)
+        display_text = text.strip()
+        import re
+        display_text = re.sub(r'^answer\s*:?\s*', '', display_text, count=1, flags=re.IGNORECASE).strip()
+        display_text = _remove_none_caveats(display_text)
+        st.markdown(display_text)
         if evidence_dict:
             st.markdown("")
             st.markdown("**Evidence:**")
@@ -271,57 +306,64 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ============================================================
 # ========== FOLLOW-UP QUESTION BUTTONS ======================
 # ============================================================
-# Show follow-up section only for the last assistant message
-if st.session_state["history"]:
+is_generating_answer = "pending_query" in st.session_state
+
+followup_area = st.empty()
+if (not is_generating_answer) and st.session_state["history"]:
     last_msg = st.session_state["history"][-1]
     if last_msg.get("role") == "assistant":
         has_suggestions = bool(last_msg.get("followup_questions"))
         if has_suggestions:
-            st.markdown("**Suggested follow-up questions:**")
-            cols = st.columns(len(last_msg["followup_questions"]))
-            for i, (col, q) in enumerate(zip(cols, last_msg["followup_questions"])):
-                with col:
-                    if st.button(q, key=f"followup_{i}"):
-                        st.session_state["history"].append({"role": "user", "content": q})
-                        st.session_state["pending_query"] = q
-                        st.session_state["pending_compare"] = False
-                        st.session_state["pending_is_followup"] = True
-                        st.rerun()
-
-        # Custom follow-up input (with context)
-        with st.form("followup_form", clear_on_submit=True):
-            followup_query = st.text_input(
-                "**Or ask your own follow-up:**",
-                placeholder="Type a follow-up question here (keeps conversation context)...",
-            )
-            followup_submitted = st.form_submit_button("Ask Follow-Up")
-        if followup_submitted and followup_query.strip():
-            st.session_state["history"].append({"role": "user", "content": followup_query})
-            st.session_state["pending_query"] = followup_query
-            st.session_state["pending_compare"] = False
-            st.session_state["pending_is_followup"] = True
-            st.rerun()
-
+            with followup_area.container():
+                st.markdown("**Suggested follow-up questions:**")
+                cols = st.columns(len(last_msg["followup_questions"]))
+                for i, (col, q) in enumerate(zip(cols, last_msg["followup_questions"])):
+                    with col:
+                        if st.button(q, key=f"followup_{i}"):
+                            st.session_state["history"].append({"role": "user", "content": q})
+                            st.session_state["pending_query"] = q
+                            st.session_state["pending_compare"] = False
+                            st.session_state["pending_is_followup"] = True
+                            st.rerun()
 
 # ============================================================
 # ========== INPUT AREA (two-line layout) ====================
 # ============================================================
-with st.container():
-    st.markdown('<div class="input-box">', unsafe_allow_html=True)
+input_area = st.empty()
+submitted = False
+followup_submitted = False
+cleared = False
 
-    with st.form("chat_form", clear_on_submit=True):
-        user_query = st.text_input(
-            "💬 **Ask a Question:**",
-            placeholder="e.g. When did redetermination begin for the COVID-19 Public Health Emergency unwind in New York State?",
-        )
+if not is_generating_answer:
+    with input_area.container():
+        st.markdown('<div class="input-box">', unsafe_allow_html=True)
 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            submitted = st.form_submit_button("📤 Submit", use_container_width=True)
-        with col2:
-            cleared = st.form_submit_button("🧹 Clear Chat", use_container_width=True)
+        with st.form("chat_form", clear_on_submit=True):
+            user_query = st.text_input(
+                "💬 **Ask a Question:**",
+                placeholder="e.g. When did redetermination begin for the COVID-19 Public Health Emergency unwind in New York State?",
+            )
 
-    st.markdown('</div>', unsafe_allow_html=True)
+            has_assistant_response = any(
+                msg.get("role") == "assistant" for msg in st.session_state["history"]
+            )
+
+            if has_assistant_response:
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    submitted = st.form_submit_button("📤 Submit", use_container_width=True)
+                with col2:
+                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
+                with col3:
+                    cleared = st.form_submit_button("🧹 Clear Chat", use_container_width=True)
+            else:
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    submitted = st.form_submit_button("📤 Submit", use_container_width=True)
+                with col2:
+                    cleared = st.form_submit_button("🧹 Clear Chat", use_container_width=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # Clear logic
 if cleared:
@@ -349,6 +391,15 @@ if submitted:
                 pass
         st.session_state["pending_query"] = user_query
         st.session_state["pending_is_followup"] = False
+        st.rerun()
+
+if followup_submitted:
+    if not user_query.strip():
+        st.warning("Please enter a follow-up question before submitting.")
+    else:
+        st.session_state["history"].append({"role": "user", "content": user_query})
+        st.session_state["pending_query"] = user_query
+        st.session_state["pending_is_followup"] = True
         st.rerun()
 
 # Submit logic ? phase 2: generate answer (runs on the rerun, user message already visible)

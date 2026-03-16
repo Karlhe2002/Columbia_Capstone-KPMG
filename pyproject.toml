@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "healthcare_rag_llm"
 version = "0.2.0"
 description = "Healthcare policy analysis with LLM and RAG"
-requires-python = ">=3.9,<3.13"  # Python 3.13 not yet fully supported by PyTorch
+requires-python = ">=3.9,<3.15"  # 3.13+ may need latest PyTorch; use 3.11–3.12 if you hit install errors
 dependencies = [
   "PyYAML",
   "tqdm",
@@ -33,7 +33,8 @@ dependencies = [
   "python-dotenv>=1.0.0",
   "openai>=1.0.0",
   "google-generativeai>=0.3.0",
-  "streamlit"
+  "streamlit",
+  "markdown>=3.0"
 ]
 
 [project.optional-dependencies]

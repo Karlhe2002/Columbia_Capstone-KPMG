@@ -20,11 +20,21 @@ api_providers:
     base_url: "https://generativelanguage.googleapis.com"
     provider: "gemini"
 
+  deepseek:
+    api_key: "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    base_url: "https://api.deepseek.com"
+    provider: "deepseek"
+  
+
 # Default API configuration
-default_provider: "gemini"
+default_provider: "deepseek"
 
 # Model configuration
 models:
+  deepseek-chat:
+    provider: "deepseek"
+    max_tokens: 4000
+
   gemini-2.5-flash:
     provider: "gemini"
     max_tokens: 4000

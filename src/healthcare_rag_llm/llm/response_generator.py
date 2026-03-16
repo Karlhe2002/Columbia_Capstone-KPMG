@@ -136,6 +136,17 @@ Output sections (exactly):
 - Evidence (quoted)
 - Caveats (if any)
 Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, YYYY].
+If Caveats has no meaningful content, output exactly:
+Caveats
+None
+Formatting requirements (strict):
+1) Use section headers on their own lines exactly as:
+   Answer: <answer text>
+   Evidence: <evidence text>
+   Caveats: <caveats text>
+2) Leave one blank line between sections.
+3) Do NOT put section headers inline with sentence content (forbidden: "... April 2023. Evidence:").
+4) In Answer section, include only answer text (no "Evidence" or "Caveats" words as section labels).
 """.strip()
 
         # llm_response = self.llm_client.chat(
@@ -154,7 +165,11 @@ Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, Y
         llm_response = self.llm_client.chat(messages=messages)
         self.chat_history.add("assistant", llm_response)
 
-        followup_questions = self._generate_followup_questions(question, llm_response)
+        followup_questions = self._generate_followup_questions(
+            question=question,
+            answer=llm_response,
+            retrieved_chunks=final_chunks,
+        )
 
         return {
             "question": question,
@@ -163,17 +178,64 @@ Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, Y
             "followup_questions": followup_questions,
         }
 
-    def _generate_followup_questions(self, question: str, answer: str) -> List[str]:
-        """Generate 3 suggested follow-up questions based on the Q&A context."""
+    def _generate_followup_questions(
+        self,
+        question: str,
+        answer: str,
+        retrieved_chunks: List[Dict],
+    ) -> List[str]:
+        """Generate follow-up questions that are answerable from already retrieved chunks."""
         try:
+            if not retrieved_chunks:
+                return []
+
+            allowed_chunk_ids = {str(chunk.get("chunk_id", "")) for chunk in retrieved_chunks if chunk.get("chunk_id")}
+            context = self._format_chunks(retrieved_chunks, compact_text=True)
+
             prompt = (
-                f"Based on this Q&A about NYS healthcare policies, suggest exactly 3 short follow-up questions "
-                f"the user might want to ask next. Return ONLY the 3 questions, one per line, no numbering or bullets.\n\n"
-                f"Question: {question}\n\nAnswer (abbreviated): {answer[:500]}"
+                "You are generating suggested follow-up questions for a NYS Medicaid Q&A assistant.\n"
+                "Goal: produce questions that can be answered using ONLY the retrieved chunks provided below.\n"
+                "Hard rules:\n"
+                "1) Suggest exactly 3 concise follow-up questions.\n"
+                "2) Every suggested question must be directly answerable from the retrieved chunks.\n"
+                "3) For each question, include at least one supporting chunk_id from the retrieved chunks.\n"
+                "4) Do not use outside knowledge.\n"
+                "5) Return ONLY valid JSON (no markdown, no commentary) as an array with this schema:\n"
+                '[{"question":"...","supports":["chunk_id_1","chunk_id_2"]}]\n\n'
+                f"Original question:\n{question}\n\n"
+                f"Current answer (abbreviated):\n{answer[:500]}\n\n"
+                f"Retrieved chunks:\n{context}\n"
             )
-            raw = self.llm_client.chat(user_prompt=prompt, temperature=0.7)
-            questions = [q.strip() for q in raw.strip().splitlines() if q.strip()]
-            return questions[:3]
+            raw = self.llm_client.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+            )
+            cleaned = re.sub(r'^```(?:json)?\s*', '', (raw or "").strip())
+            cleaned = re.sub(r'\s*```$', '', cleaned)
+            parsed = json.loads(cleaned)
+
+            if not isinstance(parsed, list):
+                return []
+
+            questions: List[str] = []
+            for item in parsed:
+                if not isinstance(item, dict):
+                    continue
+                q = str(item.get("question", "")).strip()
+                supports = item.get("supports", [])
+                if not q or not isinstance(supports, list):
+                    continue
+                support_ids = [str(s).strip() for s in supports if str(s).strip()]
+                if not support_ids:
+                    continue
+                if any(sid not in allowed_chunk_ids for sid in support_ids):
+                    continue
+                if q not in questions:
+                    questions.append(q)
+                if len(questions) == 3:
+                    break
+
+            return questions
         except Exception as e:
             print(f"[followup] Failed to generate follow-up questions: {e}")
             return []
