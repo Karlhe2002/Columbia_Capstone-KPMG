@@ -83,7 +83,13 @@ def section_semantic_chunking(
     body_raw = raw_text[body_start:]
 
     # ── 4. Clean page markers (replace with \n\n to preserve paragraph breaks) ──
-    body_clean = _clean_page_markers_preserve_breaks(body_raw, config)
+    body_clean, clean_to_raw = _clean_page_markers_preserve_breaks(body_raw, config)
+
+    def _map_to_raw(clean_pos: int) -> int:
+        """Map a position in cleaned text back to the raw text position."""
+        if clean_pos < len(clean_to_raw):
+            return body_start + clean_to_raw[clean_pos]
+        return body_start + (clean_to_raw[-1] if clean_to_raw else 0)
 
     # ── 5. Find section split points ──
     split_points: List[Tuple[str, int]] = []
@@ -117,8 +123,8 @@ def section_semantic_chunking(
         if not section_text:
             continue
 
-        raw_start = body_start + start
-        raw_end = body_start + end
+        raw_start = _map_to_raw(start)
+        raw_end = _map_to_raw(end)
 
         if len(section_text) <= max_chunk_chars:
             # Short section → single chunk, no semantic split
@@ -143,8 +149,8 @@ def section_semantic_chunking(
                 similarity_threshold, hysteresis, max_chunk_chars,
             )
             for sc in sub_chunks:
-                sc_raw_start = raw_start + sc["offset"]
-                sc_raw_end = raw_start + sc["offset"] + len(sc["text"])
+                sc_raw_start = _map_to_raw(start + sc["offset"])
+                sc_raw_end = _map_to_raw(start + sc["offset"] + len(sc["text"]))
                 pages = _estimate_pages(
                     page_markers, sc_raw_start, sc_raw_end, len(raw_text)
                 )
@@ -176,21 +182,53 @@ def section_semantic_chunking(
 # ── helpers ──────────────────────────────────────────────────────────────
 
 
-def _clean_page_markers_preserve_breaks(text: str, config: dict) -> str:
+def _clean_page_markers_preserve_breaks(text: str, config: dict) -> Tuple[str, List[int]]:
     """Remove page footers/headers but replace each page break with ``\\n\\n``
-    so that paragraph boundaries survive for sentence/paragraph tokenisers."""
+    so that paragraph boundaries survive for sentence/paragraph tokenisers.
+
+    Returns:
+        (cleaned_text, clean_to_raw_map)
+        clean_to_raw_map[i] gives the position in the original text that
+        corresponds to position i in the cleaned text.
+    """
+    # Build a char-level map: for each char in `text`, track its original index.
+    # We process substitutions one by one, updating the map each time.
+    raw_indices = list(range(len(text)))
+
+    def _sub_with_map(pattern, replacement, current_text, indices, flags=0):
+        """Apply regex sub while updating the position map."""
+        result_chars = []
+        result_indices = []
+        last_end = 0
+        for m in re.finditer(pattern, current_text, flags=flags):
+            # Keep everything before this match
+            result_chars.append(current_text[last_end:m.start()])
+            result_indices.extend(indices[last_end:m.start()])
+            # Add replacement, mapping each replacement char to the match start
+            result_chars.append(replacement)
+            result_indices.extend([indices[m.start()]] * len(replacement))
+            last_end = m.end()
+        # Keep remainder
+        result_chars.append(current_text[last_end:])
+        result_indices.extend(indices[last_end:])
+        return "".join(result_chars), result_indices
+
+    current = text
+    indices = raw_indices
+
     for pattern in config.get("footer_patterns", []):
-        text = re.sub(pattern, "\n\n", text)
+        current, indices = _sub_with_map(pattern, "\n\n", current, indices)
 
     for pattern in config.get("header_patterns", []):
-        text = re.sub(pattern, "\n\n", text, flags=re.MULTILINE)
+        current, indices = _sub_with_map(pattern, "\n\n", current, indices, flags=re.MULTILINE)
 
     for pattern in config.get("artifacts", []):
-        text = re.sub(pattern, "", text)
+        current, indices = _sub_with_map(pattern, "", current, indices)
 
     # Collapse 3+ newlines into 2
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text
+    current, indices = _sub_with_map(r"\n{3,}", "\n\n", current, indices)
+
+    return current, indices
 
 
 MIN_CHUNK_CHARS = 80  # chunks smaller than this get merged with their neighbour
