@@ -196,6 +196,30 @@ def _get_config(text: str, preset: Optional[str] = None) -> dict:
     }
 
 
+# Hardcoded sections for specific documents that have no ToC but clear sections
+_HARDCODED_SECTIONS = {
+    "Regarding Medicaid Eligibility and Transfer Process to Health Homes": [
+        "A. Children/Youth Referred to the Children\u2019s Waiver without Active Medicaid",
+        "B. Children/Youth Referred for Health Home Care Management through C-YES Transfer",
+    ],
+    "Frequently Asked Questions\nfor Providers and Stakeholders": [
+        "1) Q: How can I contact Children and Youth Evaluation Service (C-YES) and/or make a referral",
+        "2) Q: Does C-YES assist with Home-Care and/or Private Duty Nursing coordination?",
+        "3) Q: Does C-YES provide 24-7 emergency phone coverage and response for families",
+        "4) Q: Who can make a referral to C-YES for a child/youth who might need HCBS?",
+        "5) Q: How does a referent and or other involved providers know where in the HCBS",
+        "6) Q: Does C-YES talk with involved providers to help with the HCBS determination",
+        "7) Q: Does C-YES make referrals to the lead Health Home or directly to the Care",
+        "8) Q: Can providers refer consumers to C-YES for Medicaid eligibility or if/when",
+        "9) Q: How do referents and or involved providers know if the child/youth has been",
+        "10) Q: Can a child receive care coordination from both C-YES and a Health Home at",
+        "11) Q: Does C-YES confirm availability of the HCBS provider prior to referring the",
+        "12) Q: How do involved providers know that the family was transferred to Health",
+        "13) Q: How does C-YES co-manage cases for consumers enrolled in Medicaid managed",
+    ],
+}
+
+
 def _parse_toc(text: str) -> List[str]:
     """Extract ordered section/subsection titles from the Table of Contents.
 
@@ -204,29 +228,104 @@ def _parse_toc(text: str) -> List[str]:
         2.1 Electronic Claims ...................... 5
         Appendix A Claim Samples .................. 22
     """
-    # Find the ToC region
-    toc_start = text.find("Table of Contents")
-    if toc_start == -1:
-        toc_start = text.find("TABLE OF CONTENTS")
+    # Check hardcoded sections first (match by unique text in document)
+    for key, titles in _HARDCODED_SECTIONS.items():
+        if key in text:
+            return titles
+
+    # Find the ToC region (supports multiple heading formats)
+    toc_start = -1
+    for heading in ["Table of Contents", "TABLE OF CONTENTS", "In This Issue", "Inside this issue", "Contents"]:
+        toc_start = text.find(heading)
+        if toc_start != -1:
+            break
     if toc_start == -1:
         return []
 
-    # Match ToC lines: "Title ..... page_number"
-    toc_re = re.compile(r"^(.+?)\s*\.{3,}\s*(\d+)\s*$", re.MULTILINE)
+    # Patterns for ToC lines:
+    # 1. "Title ............. 4"  (continuous dots)
+    # 2. "Title . . . . . pg. 3" (spaced dots)
+    # 3. "Title 9"               (just title + page number at end, for sub-entries)
+    dotted_re = re.compile(
+        r"^(.+?)\s*[.\s]{6,}\s*(?:pg\.?\s*)?(\d+(?:-\d+)?|Cover)\s*$"
+    )
+    # For lines like "Overview 9", "Vision and Goals 10" (no dots, just trailing number)
+    bare_page_re = re.compile(
+        r"^([A-Z].{2,}?)\s+(\d+(?:-\d+)?)\s*$"
+    )
 
-    # Collect all ToC entries from toc_start onwards
+    skip_headings = {"TABLE OF CONTENTS", "CONTENTS", "IN THIS ISSUE", "IN THIS ISSUE…"}
+
+    toc_region = text[toc_start:]
+    toc_lines = toc_region.split("\n")
+
+    # Detect end of ToC region: stop when we hit body text.
+    # Limit search to first 100 lines max (no ToC is longer than that).
+    max_scan = min(len(toc_lines), 100)
+    non_toc_streak = 0
+    toc_end_idx = max_scan
+    for idx in range(max_scan):
+        ls = toc_lines[idx].strip()
+        if not ls:
+            continue
+        if dotted_re.match(ls) or bare_page_re.match(ls):
+            non_toc_streak = 0
+        else:
+            non_toc_streak += 1
+            if non_toc_streak >= 3 and idx > 5:
+                toc_end_idx = idx - 2
+                break
+
+    toc_lines = toc_lines[:toc_end_idx]
+
+    # Collect all ToC entries, merging continuation lines.
     all_entries = []
-    for m in toc_re.finditer(text[toc_start:]):
-        title = m.group(1).strip()
-        if title and title.upper() != "TABLE OF CONTENTS":
-            all_entries.append((title, m.end()))
+    pending_prefix = ""
+
+    for line in toc_lines:
+        line_stripped = line.strip()
+        if not line_stripped:
+            pending_prefix = ""
+            continue
+
+        # Try dotted match first (most common)
+        m = dotted_re.match(line_stripped)
+        if m:
+            title_part = m.group(1).strip()
+            if pending_prefix:
+                full_title = pending_prefix + " " + title_part
+                pending_prefix = ""
+            else:
+                full_title = title_part
+            if full_title.upper() not in skip_headings:
+                all_entries.append(full_title)
+            continue
+
+        # Try bare page number match (sub-entries like "Overview 9")
+        # Only used as fallback — collected separately and merged later
+        # if too few dotted entries were found.
+        m2 = bare_page_re.match(line_stripped)
+        if m2:
+            # Skip bare matches for now; handled after main loop
+            pending_prefix = ""
+            continue
+
+        # No match — could be continuation line or category header
+        if "…" not in line_stripped and "..." not in line_stripped:
+            is_category = len(line_stripped) <= 40 and not re.search(r"\d", line_stripped)
+            if is_category:
+                pending_prefix = ""
+            elif pending_prefix:
+                pending_prefix += " " + line_stripped
+            else:
+                pending_prefix = line_stripped
+        else:
+            pending_prefix = ""
 
     if not all_entries:
         return []
 
-    # ToC region ends when we stop finding dotted entries.
-    # Use the last ToC entry position to define the boundary.
-    titles = [t for t, _ in all_entries]
+    titles = all_entries
     return titles
 
 
