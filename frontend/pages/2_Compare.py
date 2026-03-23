@@ -5,6 +5,7 @@ import sys
 import traceback
 import html
 import markdown
+import re
 
 # ============================================================
 # ========== PATH SETUP ======================================
@@ -92,6 +93,7 @@ def load_rag_pipeline():
     return ResponseGenerator(llm_client, filter_extractor=filter_extractor)
 
 def get_rag_pipeline_lazy():
+    # Delay backend startup until the first real query to keep page load fast.
     if "compare_rag_pipeline" not in st.session_state:
         st.session_state["compare_rag_pipeline"] = load_rag_pipeline()
     return st.session_state["compare_rag_pipeline"]
@@ -137,6 +139,55 @@ def format_retrieved_docs(retrieved_docs):
         )
     return "\n".join(html_lines)
 
+
+def format_retrieved_docs_compare_table(retrieved_docs_grouped):
+    """Render compare retrieved docs as a 2-column table: policy vs provider manual."""
+    policy_docs = retrieved_docs_grouped.get("policy", []) or []
+    provider_docs = retrieved_docs_grouped.get("provider_manual", []) or []
+
+    def _docs_to_ul(docs):
+        if not docs:
+            return "<em style='color:#666; font-size:0.9em;'>No sources retrieved.</em>"
+
+        items = []
+        for doc in docs:
+            title = html.escape(str(doc.get("title", "")))
+            doc_id = html.escape(str(doc.get("doc_id", "Unknown")))
+            display_name = title if title else doc_id
+            url = html.escape(str(doc.get("url", "N/A")))
+            pages = html.escape(str(doc.get("pages", "N/A")))
+            snippet = html.escape(str(doc.get("text", ""))[:280]).replace("\n", " ")
+            items.append(
+                "<li>"
+                f"<strong>{display_name}</strong> (pages {pages})<br>"
+                f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"word-break:break-all; overflow-wrap:anywhere;\">{url}</a><br>"
+                f"<span style=\"color:#666; font-size:0.9em; word-break:break-word; overflow-wrap:anywhere;\">{snippet}...</span>"
+                "</li>"
+            )
+        return f"<ul style='margin:0; padding-left:1.1rem; word-break:break-word; overflow-wrap:anywhere;'>{''.join(items)}</ul>"
+
+    policy_html = _docs_to_ul(policy_docs)
+    provider_html = _docs_to_ul(provider_docs)
+
+    return f"""
+    <div style="width:100%; overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; margin:0.6rem 0 0.2rem 0; table-layout:fixed;">
+      <thead>
+        <tr style="background:#E8F0FE;">
+          <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Policy Sources</th>
+          <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Provider Manual Sources</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{policy_html}</td>
+          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{provider_html}</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    """
+
 _COMPARE_CSS = """
 <style>
 .chat-row { display: flex; align-items: flex-start; }
@@ -158,6 +209,10 @@ _COMPARE_CSS = """
 .chat-bubble table td, .chat-bubble table th {
     padding: 8px 12px; border: 1px solid #D0D0D0; vertical-align: top;
 }
+.chat-bubble table td, .chat-bubble table th, .chat-bubble a, .chat-bubble li, .chat-bubble span {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
 </style>
 """
 
@@ -167,11 +222,15 @@ def _wrap_compare_html(content: str) -> str:
 
 
 def markdown_to_html(md_text: str) -> str:
-    """Convert markdown to HTML while escaping raw HTML for safety."""
+    """Convert answer markdown to HTML with light normalization for list rendering."""
     if not md_text:
         return ""
-    safe_md = html.escape(md_text)
-    return markdown.markdown(safe_md, extensions=["extra", "sane_lists"])
+    # Follow-up answers often come back as inline bullets, so normalize them first.
+    normalized_md = re.sub(r"(?im)^answer\s*:?\s*", "", md_text, count=1).strip()
+    # Force inline bullet patterns to become actual markdown lists.
+    normalized_md = re.sub(r" \* ", "\n\n- ", normalized_md)
+    normalized_md = re.sub(r"(?m)^\s*\*\s+", "- ", normalized_md)
+    return markdown.markdown(normalized_md, extensions=["extra", "sane_lists"])
 
 
 def format_compare_tables(sections):
@@ -183,6 +242,38 @@ def format_compare_tables(sections):
     differences = sections.get("differences", [])
     caveats = sections.get("caveats")
 
+    citation_to_num = {}
+    citation_order = []
+
+    def _normalize_text_with_inline_numbers(text: str) -> str:
+        # Replace raw inline citation strings with stable numeric references like [1].
+        if text is None:
+            return ""
+        raw = str(text)
+        
+        def _replace_citation(match):
+            cite = match.group(1).strip()
+            if not cite:
+                return ""
+            if cite not in citation_to_num:
+                citation_to_num[cite] = len(citation_order) + 1
+                citation_order.append(cite)
+            n = citation_to_num[cite]
+            return f" [{n}]"
+
+        normalized = re.sub(r"\[([^\[\]]+)\]", _replace_citation, raw)
+        normalized = re.sub(r"\s{2,}", " ", normalized).strip()
+        return html.escape(normalized)
+
+    policy_def_html = _normalize_text_with_inline_numbers(policy_def)
+    provider_def_html = _normalize_text_with_inline_numbers(provider_def)
+    sim_items_html = "".join(
+        f"<li>{_normalize_text_with_inline_numbers(s)}</li>" for s in similarities
+    ) or "<li>None identified</li>"
+    diff_items_html = "".join(
+        f"<li>{_normalize_text_with_inline_numbers(d)}</li>" for d in differences
+    ) or "<li>None identified</li>"
+
     table1 = f"""
     <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
       <thead>
@@ -193,15 +284,12 @@ def format_compare_tables(sections):
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def}</td>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{provider_def}</td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def_html}</td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{provider_def_html}</td>
         </tr>
       </tbody>
     </table>
     """
-
-    sim_items = "".join(f"<li>{s}</li>" for s in similarities) or "<li>None identified</li>"
-    diff_items = "".join(f"<li>{d}</li>" for d in differences) or "<li>None identified</li>"
 
     table2 = f"""
     <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
@@ -213,8 +301,8 @@ def format_compare_tables(sections):
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{sim_items}</ul></td>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{diff_items}</ul></td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{sim_items_html}</ul></td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{diff_items_html}</ul></td>
         </tr>
       </tbody>
     </table>
@@ -224,12 +312,23 @@ def format_compare_tables(sections):
     if caveats:
         caveats_html = f'<p style="color:#856404; background:#FFF3CD; padding:8px 12px; border-radius:4px; margin-top:0.5rem;"><b>Caveats:</b> {html.escape(str(caveats))}</p>'
 
+    references_html = ""
+    if citation_order:
+        ref_items = "".join(
+            f"<li>[{i}] {html.escape(cite)}</li>" for i, cite in enumerate(citation_order, 1)
+        )
+        references_html = (
+            "<b>References:</b>"
+            f"<ol style='margin-top:0.5rem; padding-left:1.4rem;'>{ref_items}</ol>"
+        )
+
     return f"""
     <p style="font-weight:600; margin-bottom:0.5rem;">{headline}</p>
     <b>Definitions:</b>
     {table1}
     <b>Comparison:</b>
     {table2}
+    {references_html}
     {caveats_html}
     """
 
@@ -295,39 +394,89 @@ for msg in st.session_state["compare_history"]:
         evidence_dict = msg.get("evidence_dict", {})
         formatted_evidence = format_evidence_dict(evidence_dict)
         retrieved_docs = msg.get("retrieved_docs", [])
+        retrieved_docs_grouped = msg.get("retrieved_docs_grouped", {})
         formatted_sources = format_retrieved_docs(retrieved_docs) if retrieved_docs else ""
         compare_sections = msg.get("compare_sections", {})
         is_followup = bool(msg.get("is_followup", False))
 
         answer_body = text
         answer_body_is_html = False
+        # The first compare answer is rendered as custom HTML tables; follow-ups are plain markdown.
         if (not is_followup) and compare_sections and not compare_sections.get("_parse_failed"):
             answer_body = format_compare_tables(compare_sections)
             answer_body_is_html = True
 
         answer_body_html = answer_body if answer_body_is_html else markdown_to_html(answer_body)
 
-        if retrieved_docs:
-            display_content = f"""
+        has_grouped_sources = bool(retrieved_docs_grouped) and (
+            bool(retrieved_docs_grouped.get("policy")) or bool(retrieved_docs_grouped.get("provider_manual"))
+        )
+        has_sources = bool(retrieved_docs) or has_grouped_sources
+
+        if is_followup:
+            # Follow-ups intentionally mirror app.py so markdown bullets/bold render naturally.
+            st.markdown(
+                """
 <div class="chat-row assistant">
 <div class="avatar assistant">&#x1F914;</div>
 <div class="chat-bubble assistant">
-{answer_body_html}
-{"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><ul style='margin-top:0.5rem; padding-left:1.5rem;'>" + formatted_evidence + "</ul>" if evidence_dict else ""}
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown("**Answer:**")
+            display_text = text.strip()
+            display_text = re.sub(r"^answer\s*:?\s*", "", display_text, count=1, flags=re.IGNORECASE).strip()
+            # Normalize inline bullets so follow-up formatting matches app.py behavior.
+            display_text = re.sub(r" \* ", "\n- ", display_text)
+            display_text = re.sub(r"(?m)^\s*\*\s+", "- ", display_text)
+            display_text = re.sub(r" \- (?=[A-Za-z0-9\"'])", "\n- ", display_text)
+            st.markdown(display_text)
+            if evidence_dict:
+                st.markdown("")
+                st.markdown("**Evidence:**")
+                st.markdown("_Direct quotes from official documents that support the answer above._")
+                st.markdown(
+                    f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_evidence}</ul>",
+                    unsafe_allow_html=True,
+                )
+            if has_sources:
+                st.markdown("")
+                st.markdown("**Retrieved Sources:**")
+                st.markdown("_Document snippets that were retrieved and analyzed to answer your question._")
+                st.markdown(
+                    f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_sources}</ul>",
+                    unsafe_allow_html=True,
+                )
+            st.markdown("</div></div>", unsafe_allow_html=True)
+        else:
+            if has_sources:
+                if has_grouped_sources:
+                    # Initial compare results keep policy/provider sources separated side by side.
+                    retrieved_sources_html = (
+                        "<strong>&#x1F4DA; Retrieved Sources:</strong><br>"
+                        "<em style=\"color: #666; font-size: 0.9em;\">Policy sources are on the left; provider manual sources are on the right.</em>"
+                        + format_retrieved_docs_compare_table(retrieved_docs_grouped)
+                    )
+                else:
+                    retrieved_sources_html = f"""
 <strong>&#x1F4DA; Retrieved Sources:</strong><br>
 <em style="color: #666; font-size: 0.9em;">Document snippets that were retrieved and analyzed to answer your question.</em>
 <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
 {formatted_sources}
 </ul>
+"""
+                display_content = f"""
+<div class="chat-row assistant">
+<div class="avatar assistant">&#x1F914;</div>
+<div class="chat-bubble assistant">
+{answer_body_html}
+{"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><ul style='margin-top:0.5rem; padding-left:1.5rem;'>" + formatted_evidence + "</ul>" if evidence_dict else ""}
+{retrieved_sources_html}
 </div>
 </div>
 """
-            if (not is_followup) and compare_sections and not compare_sections.get("_parse_failed"):
-                st.html(_wrap_compare_html(display_content))
             else:
-                st.markdown(display_content, unsafe_allow_html=True)
-        else:
-            display_content = f"""
+                display_content = f"""
 <div class="chat-row assistant">
 <div class="avatar assistant">&#x1F914;</div>
 <div class="chat-bubble assistant">
@@ -336,7 +485,7 @@ for msg in st.session_state["compare_history"]:
 </div>
 </div>
 """
-            if (not is_followup) and compare_sections and not compare_sections.get("_parse_failed"):
+            if compare_sections and not compare_sections.get("_parse_failed"):
                 st.html(_wrap_compare_html(display_content))
             else:
                 st.markdown(display_content, unsafe_allow_html=True)
@@ -355,7 +504,9 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ============================================================
 # ========== FOLLOW-UP QUESTION BUTTONS ======================
 # ============================================================
-if st.session_state["compare_history"]:
+is_generating_compare = "compare_pending_query" in st.session_state
+
+if (not is_generating_compare) and st.session_state["compare_history"]:
     last_msg = st.session_state["compare_history"][-1]
     if last_msg.get("role") == "assistant":
         has_suggestions = bool(last_msg.get("followup_questions"))
@@ -365,42 +516,50 @@ if st.session_state["compare_history"]:
             for i, (col, q) in enumerate(zip(cols, last_msg["followup_questions"])):
                 with col:
                     if st.button(q, key=f"compare_followup_{i}"):
+                        # Button clicks do not answer immediately; they queue work for the next rerun.
                         st.session_state["compare_history"].append({"role": "user", "content": q})
                         st.session_state["compare_pending_query"] = q
                         st.session_state["compare_pending_is_followup"] = True
                         st.rerun()
 
-        with st.form("compare_followup_form", clear_on_submit=True):
-            followup_query = st.text_input(
-                "**Or ask your own follow-up:**",
-                placeholder="Type a follow-up question here (keeps comparison context)...",
-            )
-            followup_submitted = st.form_submit_button("Ask Follow-Up")
-        if followup_submitted and followup_query.strip():
-            st.session_state["compare_history"].append({"role": "user", "content": followup_query})
-            st.session_state["compare_pending_query"] = followup_query
-            st.session_state["compare_pending_is_followup"] = True
-            st.rerun()
 
 # ============================================================
 # ========== INPUT AREA ======================================
 # ============================================================
-with st.container():
-    st.markdown('<div class="input-box">', unsafe_allow_html=True)
+submitted = False
+followup_submitted = False
+cleared = False
 
-    with st.form("compare_form", clear_on_submit=True):
-        user_query = st.text_input(
-            "🔎 **Compare a Concept:**",
-            placeholder="e.g. Define 'medical necessity' in policy vs provider manual.",
-        )
+if not is_generating_compare:
+    with st.container():
+        st.markdown('<div class="input-box">', unsafe_allow_html=True)
 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
-        with col2:
-            cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
+        with st.form("compare_form", clear_on_submit=True):
+            user_query = st.text_input(
+                "🔎 **Compare a Concept:**",
+                placeholder="e.g. Define 'medical necessity' in policy vs provider manual.",
+            )
 
-    st.markdown('</div>', unsafe_allow_html=True)
+            has_assistant_response = any(
+                msg.get("role") == "assistant" for msg in st.session_state["compare_history"]
+            )
+
+            if has_assistant_response:
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
+                with col2:
+                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
+                with col3:
+                    cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
+            else:
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
+                with col2:
+                    cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================================
 # ========== CLEAR / SUBMIT ==================================
@@ -420,6 +579,7 @@ if submitted:
     if not user_query.strip():
         st.warning("Please enter a concept before comparing.")
     else:
+        # A brand-new compare query resets the conversation to a fresh compare session.
         st.session_state["compare_history"] = [{"role": "user", "content": user_query}]
         rag_pipeline = st.session_state.get("compare_rag_pipeline")
         if rag_pipeline:
@@ -431,23 +591,37 @@ if submitted:
         st.session_state["compare_pending_is_followup"] = False
         st.rerun()
 
+if followup_submitted:
+    if not user_query.strip():
+        st.warning("Please enter a follow-up question before submitting.")
+    else:
+        # Follow-ups extend the current conversation instead of clearing it.
+        st.session_state["compare_history"].append({"role": "user", "content": user_query})
+        st.session_state["compare_pending_query"] = user_query
+        st.session_state["compare_pending_is_followup"] = True
+        st.rerun()
+
 # Submit logic — phase 2
 if "compare_pending_query" in st.session_state:
     pending_query = st.session_state.pop("compare_pending_query")
     pending_is_followup = st.session_state.pop("compare_pending_is_followup", False)
+    # Streamlit reruns the whole file after every interaction; this block is the "do the work now" phase.
     with st.spinner("Retrieving information..." if pending_is_followup else "Comparing definitions..."):
         try:
             rag_pipeline = get_rag_pipeline_lazy()
             if rag_pipeline:
                 if pending_is_followup:
+                    # Follow-ups use the standard Q&A path so the model can use conversation context.
                     history_for_llm = st.session_state["compare_history"]
                     result = rag_pipeline.answer_question(pending_query, history=history_for_llm)
                     answer = result.get("answer", "No answer returned.")
                     evidence_dict = result.get("evidence_dict", {})
                     retrieved_docs = result.get("retrieved_docs", [])
+                    retrieved_docs_grouped = {}
                     followup_questions = result.get("followup_questions", [])
                     compare_sections = {}
                 else:
+                    # The initial compare turn uses the dedicated compare endpoint and richer table output.
                     result = rag_pipeline.answer_compare_definitions(
                         pending_query,
                         concept=pending_query,
@@ -455,11 +629,17 @@ if "compare_pending_query" in st.session_state:
                     answer = result.get("answer", "No answer returned.")
                     evidence_dict = result.get("evidence_dict", {})
                     retrieved_docs = result.get("retrieved_docs", [])
+                    retrieved_docs_grouped = {}
                     followup_questions = result.get("followup_questions", [])
                     compare_sections = result.get("compare_sections", {})
                     if isinstance(retrieved_docs, dict):
+                        # Preserve the split source groups for the side-by-side retrieved source table.
                         policy_docs = retrieved_docs.get("policy", []) or []
                         provider_docs = retrieved_docs.get("provider_manual", []) or []
+                        retrieved_docs_grouped = {
+                            "policy": policy_docs,
+                            "provider_manual": provider_docs,
+                        }
                         retrieved_docs = policy_docs + provider_docs
             else:
                 answer = (
@@ -469,6 +649,7 @@ if "compare_pending_query" in st.session_state:
                 )
                 evidence_dict = {}
                 retrieved_docs = []
+                retrieved_docs_grouped = {}
                 followup_questions = []
                 compare_sections = {}
             st.session_state["compare_history"].append({
@@ -476,6 +657,7 @@ if "compare_pending_query" in st.session_state:
                 "content": answer,
                 "evidence_dict": evidence_dict,
                 "retrieved_docs": retrieved_docs,
+                "retrieved_docs_grouped": retrieved_docs_grouped,
                 "compare_sections": compare_sections,
                 "followup_questions": followup_questions,
                 "is_followup": pending_is_followup,
