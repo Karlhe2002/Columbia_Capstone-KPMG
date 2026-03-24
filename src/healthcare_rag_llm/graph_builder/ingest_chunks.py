@@ -119,7 +119,8 @@ def _write_batch(session, batch_rows: List[Dict[str, Any]]):
 def ingest_chunks(
     jsonl_path: str,
     doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
-    batch_size: int = 30
+    batch_size: int = 30,
+    embed_batch_size: int = 8
 ):
     """
     Ingest a single JSONL chunk file into Neo4j.
@@ -128,96 +129,93 @@ def ingest_chunks(
     - Links Authority, Document, Page, Chunk
     - Unifies all chunk types (text/table/ocr)
     - Every chunk gets a denseEmbedding (for vector search)
-    - Batch mode for stability/performance
+    - Batch embedding (embed_batch_size texts at once) for ~5x speedup
+    - Batch Neo4j write for stability/performance
     """
-    embedder = get_embedding_singleton() #HealthcareEmbedding()
+    embedder = get_embedding_singleton()
     connector = Neo4jConnector()
 
     chunk_file = Path(jsonl_path)
     if not chunk_file.exists():
         raise FileNotFoundError(f"❌ File not found: {jsonl_path}")
 
+    # Read all records
+    records = []
+    with open(chunk_file, "r", encoding="utf-8") as f:
+        for line in f:
+            record = json.loads(line)
+            doc_id_raw = (record.get("doc_id") or "").strip()
+            if doc_id_raw:
+                records.append(record)
+
+    if not records:
+        print(f"[SKIP] {chunk_file.name} (no records)")
+        return
+
+    # Batch encode embeddings (embed_batch_size at a time, M1 friendly)
+    all_texts = [(r.get("text") or "").strip() for r in records]
+    all_vecs = []
+    for start in range(0, len(all_texts), embed_batch_size):
+        batch_texts = all_texts[start:start + embed_batch_size]
+        enc = embedder.encode(
+            batch_texts,
+            return_dense=True,
+            return_sparse=False,
+            return_colbert_vecs=False
+        )
+        for vec in enc["dense_vecs"]:
+            all_vecs.append(vec.tolist() if hasattr(vec, "tolist") else list(vec))
+
+    # Write to Neo4j
     batch: List[Dict[str, Any]] = []
     chunk_count = 0
 
     with connector.driver.session() as session:
-        with open(chunk_file, "r", encoding="utf-8") as f:
-            for line in tqdm(f, desc=f"Ingesting {chunk_file.name}"):
-                record = json.loads(line)
+        for i, record in enumerate(tqdm(records, desc=f"Ingesting {chunk_file.name}")):
+            doc_id = (record.get("doc_id") or "").strip().lower()
+            chunk_id = record.get("chunk_id")
+            pages = record.get("pages", []) or [1]
+            text = all_texts[i]
 
-                # --- Normalize core fields ---
-                doc_id_raw = (record.get("doc_id") or "").strip()
-                if not doc_id_raw:
-                    continue
-                doc_id = doc_id_raw.lower()  # important: metadata keys should be lowercased too
+            if isinstance(chunk_id, str) and "::table" in chunk_id:
+                chunk_type = "table"
+            elif isinstance(chunk_id, str) and "::ocr" in chunk_id:
+                chunk_type = "ocr"
+            else:
+                chunk_type = "text"
 
-                chunk_id = record.get("chunk_id")
-                pages = record.get("pages", []) or [1]
-                text = (record.get("text") or "").strip()
+            category = (record.get("category") or "").strip()
+            if not category:
+                dm = (doc_metadata or {}).get(doc_id, {})
+                category = (dm.get("category") or "unknown").strip() or "unknown"
 
-                # --- Chunk type detection ---
-                if isinstance(chunk_id, str) and "::table" in chunk_id:
-                    chunk_type = "table"
-                elif isinstance(chunk_id, str) and "::ocr" in chunk_id:
-                    chunk_type = "ocr"
-                else:
-                    chunk_type = "text"
-
-                # --- Category (document-level) from record, then metadata, then 'unknown' ---
-                category = (record.get("category") or "").strip()
-                if not category:
-                    dm = (doc_metadata or {}).get(doc_id, {})
-                    category = (dm.get("category") or "unknown").strip() or "unknown"
-
-                # --- Generate embedding (for all types) ---
-                enc = embedder.encode(
-                    [text],
-                    return_dense=True,
-                    return_sparse=False,
-                    return_colbert_vecs=False
-                )
-                dense_vec = enc["dense_vecs"][0]
-                dense_vec = dense_vec.tolist() if hasattr(dense_vec, "tolist") else list(dense_vec)
-
-                # --- Document-level metadata (keyed by lowercased doc_id) ---
-                meta = (doc_metadata or {}).get(doc_id, {})
-                authority = meta.get("authority", "Unknown")
-                authority_abbr = meta.get("authority_abbr", "")
-                title = meta.get("title", "")
-                url = meta.get("url", "")
-                effective_date = _parse_effective_date(
+            meta = (doc_metadata or {}).get(doc_id, {})
+            batch.append({
+                "doc_id": doc_id,
+                "title": meta.get("title", ""),
+                "url": meta.get("url", ""),
+                "doc_type": meta.get("doc_type", "PDF"),
+                "effective_date": _parse_effective_date(
                     record.get("effective_date") or meta.get("effective_date")
-                )
-                doc_type = meta.get("doc_type", "PDF")
-                doc_class = (meta.get("doc_class") or "").strip()
+                ),
+                "authority": meta.get("authority", "Unknown"),
+                "authority_abbr": meta.get("authority_abbr", ""),
+                "category": category,
+                "chunk_id": chunk_id,
+                "chunk_type": chunk_type,
+                "text": text,
+                "denseEmbedding": all_vecs[i],
+                "pages": pages,
+                "doc_class": (meta.get("doc_class") or "").strip(),
+            })
+            chunk_count += 1
 
-                # --- Accumulate row for batch write ---
-                batch.append({
-                    "doc_id": doc_id,
-                    "title": title,
-                    "url": url,
-                    "doc_type": doc_type,
-                    "effective_date": effective_date,
-                    "authority": authority,
-                    "authority_abbr": authority_abbr,
-                    "category": category,          # <- passed to Document level
-                    "chunk_id": chunk_id,
-                    "chunk_type": chunk_type,
-                    "text": text,
-                    "denseEmbedding": dense_vec,
-                    "pages": pages,
-                    "doc_class": doc_class,
-                })
-                chunk_count += 1
-
-                # --- Flush batch ---
-                if len(batch) >= batch_size:
-                    _write_batch(session, batch)
-                    batch = []
-
-            # --- Final flush ---
-            if batch:
+            if len(batch) >= batch_size:
                 _write_batch(session, batch)
+                batch = []
+
+        if batch:
+            _write_batch(session, batch)
 
     connector.close()
     print(f"✅ Ingested {chunk_count} chunks (Document.category set) from {chunk_file.name}")
