@@ -1,5 +1,7 @@
-import openai
+import os
+
 import google.generativeai as genai
+import openai
 import requests
 
 
@@ -21,6 +23,58 @@ class LLMClient:
         else:
             raise ValueError("Unsupported provider: choose 'openai', 'gemini', or 'ollama'")
 
+    @classmethod
+    def from_env(
+        cls,
+        default_provider: str = "ollama",
+        default_model: str = "llama3.2:3b",
+        default_base_url: str = None,
+    ) -> "LLMClient":
+        provider = os.getenv("LLM_PROVIDER", default_provider).strip().lower()
+        model = os.getenv("LLM_MODEL", default_model).strip()
+        base_url = os.getenv("LLM_BASE_URL", default_base_url)
+
+        if provider == "openai":
+            api_key = os.getenv("OPENAI_API_KEY", "")
+        elif provider == "gemini":
+            api_key = os.getenv("GEMINI_API_KEY", "")
+        else:
+            api_key = ""
+            base_url = os.getenv("OLLAMA_BASE_URL", base_url)
+
+        return cls(
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
+            provider=provider,
+        )
+
+    def _ollama_chat(self, messages: list, temperature: float = 0.1) -> str:
+        url = f"{self.ollama_url}/api/chat"
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False,
+            "options": {"temperature": temperature},
+        }
+        try:
+            r = self.session.post(url, json=payload, timeout=300)
+            r.raise_for_status()
+        except requests.exceptions.ConnectionError as exc:
+            raise RuntimeError(
+                "Could not connect to Ollama at "
+                f"{self.ollama_url}. Start the Ollama server, or set "
+                "`OLLAMA_BASE_URL`/`LLM_BASE_URL` to a reachable endpoint. "
+                f"Current model: {self.model}."
+            ) from exc
+        except requests.exceptions.RequestException as exc:
+            raise RuntimeError(
+                f"Ollama request failed for model '{self.model}' at {url}: {exc}"
+            ) from exc
+
+        data = r.json()
+        return data["message"]["content"]
+
     def chat(self, user_prompt: str = None, system_prompt: str = None, messages: list = None,temperature = 0.1) -> str:
 
         if messages is not None:
@@ -36,12 +90,7 @@ class LLMClient:
                 resp = self.client.generate_content(conversation,generation_config={"temperature":temperature})
                 return resp.text
             elif self.provider == "ollama":
-                url = f"{self.ollama_url}/api/chat"
-                payload = {"model": self.model, "messages": messages, "stream": False,"options":{"temperature":temperature}}
-                r = self.session.post(url, json=payload, timeout=60)
-                r.raise_for_status()
-                data = r.json()
-                return data["message"]["content"]
+                return self._ollama_chat(messages=messages, temperature=temperature)
         else:
             if self.provider == "openai":
                 messages = []
@@ -62,12 +111,7 @@ class LLMClient:
                 if system_prompt:
                     messages.append({"role": "system", "content": system_prompt})
                 messages.append({"role": "user", "content": user_prompt})
-                url = f"{self.ollama_url}/api/chat"
-                payload = {"model": self.model, "messages": messages, "stream": False}
-                r = self.session.post(url, json=payload, timeout=60)
-                r.raise_for_status()
-                data = r.json()
-                return data["message"]["content"]
+                return self._ollama_chat(messages=messages, temperature=temperature)
 
 """
 sample usage: 

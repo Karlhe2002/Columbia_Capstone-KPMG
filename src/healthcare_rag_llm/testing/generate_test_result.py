@@ -73,7 +73,7 @@ class RAGBatchTester:
         self.llm_client = (
             llm_client
             if llm_client is not None
-            else LLMClient(api_key="", provider="ollama", model="llama3.2:3b")
+            else LLMClient.from_env(default_provider="ollama", default_model="llama3.2:3b")
         )
 
         # Initialize reranker if needed
