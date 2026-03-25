@@ -3,47 +3,46 @@ LLM-based evaluation for answer_compare_definitions outputs.
 
 1. Policy side: evaluate policy_definition against policy chunks
 2. Provider side: evaluate provider_manual_definition against provider chunks
-3. Cross-source correlation: policy vs provider definitions
-4. Compare quality: similarities/differences accuracy
-5. Format compliance: raw LLM output (before parse) matches expected JSON schema
-   (headline_summary, policy_definition, provider_manual_definition, similarities, differences, caveats)
+3. Query alignment: evaluate comparison similarities/differences vs query
+4. Compare quality: evaluate comparison similarities/differences vs chunks (accuracy_sim, accuracy_diff, correctness, completeness, balance)
 """
 
-import inspect
 import json
-import re
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from healthcare_rag_llm.evaluate.llm_evaluate import LLMEvaluator
 from healthcare_rag_llm.llm.llm_client import LLMClient
-from healthcare_rag_llm.llm.response_generator import ResponseGenerator
 
-_compare_keys_cache: Optional[List[str]] = None
-
-
-def _get_compare_output_required_keys() -> List[str]:
-    """Extract required JSON keys from response_generator prompt (no modification of source)."""
-    global _compare_keys_cache
-    if _compare_keys_cache is not None:
-        return _compare_keys_cache
-    src = inspect.getsource(ResponseGenerator.answer_compare_definitions)
-    schema_start = src.find("exactly these keys")
-    schema_end = src.find("}}", schema_start) + 2
-    block = src[schema_start:schema_end]
-    keys = re.findall(r'"([a-z_]+)"\s*:', block)
-    seen = []
-    for k in keys:
-        if k not in seen:
-            seen.append(k)
-    _compare_keys_cache = seen
-    return _compare_keys_cache
+def _clamp_score(value: Any) -> float:
+    """Clamp any numeric-like score to [0.0, 1.0]."""
+    return max(0.0, min(1.0, float(value)))
 
 
-def _parse_json_response(response: str, metric_name: str) -> Dict[str, Any]:
-    """Parse LLM JSON response, same logic as LLMEvaluator._parse_json_response."""
+def _derive_score_from_fields(data: Dict[str, Any], fields: List[str]) -> Optional[float]:
+    """Compute mean score from available numeric fields in [0,1]."""
+    vals: List[float] = []
+    for key in fields:
+        if key not in data:
+            continue
+        try:
+            vals.append(_clamp_score(data[key]))
+        except (TypeError, ValueError):
+            continue
+    if not vals:
+        return None
+    return round(sum(vals) / len(vals), 3)
+
+
+def _parse_json_response(
+    response: str,
+    metric_name: str,
+    require_score: bool = False,
+    fallback: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Parse a JSON object from LLM output with optional score validation."""
     try:
-        cleaned = response.replace("\t", " ").replace("\r", "")
+        cleaned = str(response).replace("\t", " ").replace("\r", "")
         start_idx = cleaned.find("{")
         end_idx = cleaned.rfind("}") + 1
         if start_idx != -1 and end_idx > start_idx:
@@ -52,35 +51,16 @@ def _parse_json_response(response: str, metric_name: str) -> Dict[str, Any]:
                 result = json.loads(json_str)
             except json.JSONDecodeError:
                 result = json.loads(json_str, strict=False)
-            
-            # Validate required fields
-            required_keys = ["headline_summary", "policy_definition", "provider_manual_definition", "similarities", "differences", "caveats"]
-            for key in required_keys:
-                if key not in result:
-                    raise ValueError(f"Missing required field: {key}")
-            
-            # Validate field types
-            if not isinstance(result.get("headline_summary"), str):
-                raise ValueError("'headline_summary' must be a string")
-            if not isinstance(result.get("policy_definition"), str):
-                raise ValueError("'policy_definition' must be a string")
-            if not isinstance(result.get("provider_manual_definition"), str):
-                raise ValueError("'provider_manual_definition' must be a string")
-            if not isinstance(result.get("similarities"), list):
-                raise ValueError("'similarities' must be a list")
-            if not isinstance(result.get("differences"), list):
-                raise ValueError("'differences' must be a list")
-            if result.get("caveats") is not None and not isinstance(result.get("caveats"), str):
-                raise ValueError("'caveats' must be a string or null")
-            
-            # Validate score field
-            if "score" not in result:
-                raise ValueError("Missing 'score' field")
-            result["score"] = max(0.0, min(1.0, float(result["score"])))
+            if require_score:
+                if "score" not in result:
+                    raise ValueError("Missing 'score' field")
+                result["score"] = _clamp_score(result["score"])
             return result
         raise ValueError("No JSON found in response")
     except Exception as e:
         print(f"  Warning: Failed to parse {metric_name} response: {e}")
+        if fallback is not None:
+            return fallback
         return {
             "score": 0.0,
             "reasoning": f"Failed to parse LLM response: {str(e)}",
@@ -88,94 +68,69 @@ def _parse_json_response(response: str, metric_name: str) -> Dict[str, Any]:
         }
 
 
-def _evaluate_format_compliance(raw_answer: str) -> Dict[str, Any]:
-    """
-    Check if raw LLM output (before parse) conforms to the expected JSON schema.
-    No LLM call - programmatic validation only.
-    """
-    issues: List[str] = []
-    score = 1.0
-
-    if not raw_answer or not isinstance(raw_answer, str):
-        return {
-            "score": 0.0,
-            "parse_ok": False,
-            "issues": ["No raw answer provided"],
-            "reasoning": "Raw LLM output (answer field) is required for format compliance check.",
-        }
-
-    cleaned = re.sub(r"^```(?:json)?\s*", "", raw_answer.strip())
-    cleaned = re.sub(r"\s*```$", "", cleaned)
-
-    try:
-        parsed = json.loads(cleaned)
-    except json.JSONDecodeError as e:
-        return {
-            "score": 0.0,
-            "parse_ok": False,
-            "issues": [f"JSON parse error: {e}"],
-            "reasoning": "Raw output is not valid JSON.",
-        }
-
-    if not isinstance(parsed, dict):
-        return {
-            "score": 0.0,
-            "parse_ok": False,
-            "issues": ["Root must be a JSON object"],
-            "reasoning": "Expected a JSON object, not array or primitive.",
-        }
-
-    for key in _get_compare_output_required_keys():
-        if key not in parsed:
-            issues.append(f"Missing required key: {key}")
-            score -= 0.2
-        else:
-            val = parsed[key]
-            if key in ("headline_summary", "policy_definition", "provider_manual_definition"):
-                if not isinstance(val, str):
-                    issues.append(f"'{key}' must be string, got {type(val).__name__}")
-                    score -= 0.1
-            elif key in ("similarities", "differences"):
-                if not isinstance(val, list):
-                    issues.append(f"'{key}' must be list, got {type(val).__name__}")
-                    score -= 0.15
-                else:
-                    for i, item in enumerate(val):
-                        if not isinstance(item, str):
-                            issues.append(f"'{key}[{i}]' must be string")
-                            score -= 0.05
-            elif key == "caveats":
-                if val is not None and not isinstance(val, str):
-                    issues.append(f"'{key}' must be string or null, got {type(val).__name__}")
-                    score -= 0.1
-
-    extra = set(parsed.keys()) - set(_get_compare_output_required_keys())
-    if extra:
-        issues.append(f"Extra keys (not in schema): {sorted(extra)}")
-        score -= 0.05 * len(extra)
-
-    score = max(0.0, min(1.0, score))
-    return {
-        "score": round(score, 3),
-        "parse_ok": True,
-        "issues": issues if issues else [],
-        "reasoning": "Schema valid" if not issues else "; ".join(issues),
-    }
+def _to_string_list(value: Any) -> List[str]:
+    """Normalize a value into a list[str]."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if isinstance(value, list):
+        out: List[str] = []
+        for item in value:
+            if item is None:
+                continue
+            item_s = str(item).strip()
+            if item_s:
+                out.append(item_s)
+        return out
+    return [str(value)]
 
 
-def _evaluate_cross_source_correlation(
+def _normalize_retrieved_chunks(raw_chunks: Any) -> List[Dict[str, Any]]:
+    """Normalize retrieved chunks into dicts centered on each item's text field."""
+    if not isinstance(raw_chunks, list):
+        return []
+
+    normalized: List[Dict[str, Any]] = []
+    for item in raw_chunks:
+        text = ""
+        doc_id = "unknown"
+        pages: Any = "?"
+
+        if isinstance(item, dict):
+            text = str(item.get("text", "") or "").strip()
+            doc_id = str(item.get("doc_id", "unknown") or "unknown")
+            pages = item.get("pages", "?")
+        elif isinstance(item, str):
+            text = item.strip()
+
+        if text:
+            normalized.append(
+                {
+                    "text": text,
+                    "doc_id": doc_id,
+                    "pages": pages,
+                }
+            )
+
+    return normalized
+
+
+def _evaluate_query_alignment(
     llm_client: LLMClient,
     query: str,
     concept: str,
-    policy_definition: str,
-    provider_manual_definition: str,
+    similarities: List[str],
+    differences: List[str],
 ) -> Dict[str, Any]:
     """
-    LLM-as-judge: Evaluate whether policy and provider definitions
-    correlate with each other (consistent, complementary, same concept).
+    Evaluate whether comparison similarities/differences align with the query.
     """
-    target = concept if concept else "the requested concept"
-    prompt = f"""You are an expert evaluator assessing whether two definitions of the same concept (from different sources) correlate with each other.
+    target = concept or "the requested concept"
+    sim_text = "\n".join(f"  - {s}" for s in similarities) if similarities else "(none)"
+    diff_text = "\n".join(f"  - {d}" for d in differences) if differences else "(none)"
+
+    prompt = f"""You are an expert evaluator assessing whether a comparison summary is relevant to a user query.
 
 QUERY:
 {query}
@@ -183,55 +138,53 @@ QUERY:
 TARGET CONCEPT:
 {target}
 
-POLICY DEFINITION:
-{policy_definition}
+COMPARISON SUMMARY (similarities / differences):
+SIMILARITIES:
+{sim_text}
 
-PROVIDER MANUAL DEFINITION:
-{provider_manual_definition}
+DIFFERENCES:
+{diff_text}
 
 TASK:
-Evaluate whether these two definitions CORRELATE with each other. Consider:
-1. Do they address the same concept?
-2. Are they consistent (no contradictions)?
-3. Do they complement each other or reinforce key points?
-4. Are differences explained and reasonable (e.g., different perspectives)?
-5. Overall coherence between the two sources
+Evaluate whether the listed similarities/differences address the asked concept and user intent.
 
-Rate the correlation on a scale of 0.0 to 1.0:
-- 1.0: Strongly correlated, consistent, complementary, clearly same concept
-- 0.8-0.9: Well correlated, minor inconsistencies
-- 0.5-0.7: Partially correlated, some contradictions or divergent focus
-- 0.3-0.4: Weakly correlated, significant inconsistencies
-- 0.0-0.2: Not correlated, contradictory, or different concepts
+Rate comparison alignment on a scale of 0.0 to 1.0:
+- 1.0: Highly relevant, directly answers the query
+- 0.8-0.9: Mostly relevant, minor gaps
+- 0.5-0.7: Partially relevant, some off-topic content
+- 0.3-0.4: Low relevance, mostly off-topic
+- 0.0-0.2: Not relevant, unrelated
 
 Respond in JSON format:
 {{
-    "score": <float between 0 and 1>,
-    "reasoning": "<explanation of correlation assessment>",
-    "contradictions": ["<list any contradictions if present>"],
-    "consistencies": ["<list key consistencies>"]
+    "comparison_query_relevance": <float between 0 and 1>,
+    "reasoning": "<brief explanation>",
+    "off_topic_points": ["<optional off-topic or mismatched points>"]
 }}"""
-
     response = llm_client.chat(prompt)
-    return _parse_json_response(response, "cross_source_correlation")
+    result = _parse_json_response(response, "query_alignment", require_score=False)
+    if "comparison_query_relevance" in result:
+        result["comparison_query_relevance"] = _clamp_score(result["comparison_query_relevance"])
+    result.pop("score", None)
+    return result
 
 
 def _evaluate_compare_quality(
     llm_client: LLMClient,
     query: str,
     concept: str,
-    policy_definition: str,
-    provider_manual_definition: str,
     similarities: List[str],
     differences: List[str],
     policy_chunks: List[Dict[str, Any]],
     provider_chunks: List[Dict[str, Any]],
+    include_correctness: bool,
 ) -> Dict[str, Any]:
     """
-    LLM-as-judge: Evaluate whether similarities and differences are accurate,
-    grounded in sources, and complete.
+    Single-function evaluation for comparison quality against chunks,
+    using separated similarity/difference accuracy scores.
     """
-    target = concept if concept else "the requested concept"
+    target = concept or "the requested concept"
+
     sim_text = "\n".join(f"  - {s}" for s in similarities) if similarities else "(none)"
     diff_text = "\n".join(f"  - {d}" for d in differences) if differences else "(none)"
     policy_ctx = "\n\n".join(
@@ -243,19 +196,18 @@ def _evaluate_compare_quality(
         for i, chunk in enumerate(provider_chunks[:5])
     ) if provider_chunks else "(no provider chunks)"
 
-    prompt = f"""You are an expert evaluator assessing the QUALITY of a comparison summary between policy and provider manual definitions.
+    correctness_task = "3. CORRECTNESS: Are claims factually correct given query and source chunks?" if include_correctness else ""
+    completeness_idx = 4 if include_correctness else 3
+    balance_idx = 5 if include_correctness else 4
+    correctness_json = '    "correctness": <float between 0 and 1>,\n' if include_correctness else ""
+
+    prompt = f"""You are an expert evaluator assessing comparison quality in ONE pass.
 
 QUERY:
 {query}
 
 TARGET CONCEPT:
 {target}
-
-POLICY DEFINITION (LLM output):
-{policy_definition}
-
-PROVIDER MANUAL DEFINITION (LLM output):
-{provider_manual_definition}
 
 LLM-IDENTIFIED SIMILARITIES:
 {sim_text}
@@ -270,12 +222,12 @@ PROVIDER MANUAL SOURCE CHUNKS (excerpts):
 {provider_ctx}
 
 TASK:
-Evaluate the quality of the similarities and differences. Consider:
-1. ACCURACY: Are the similarities actually supported by both policy and provider sources?
-2. ACCURACY: Are the differences truly distinguishing policy from provider (not mixing them up)?
-3. GROUNDING: Can each similarity/difference point be traced to the source chunks?
-4. COMPLETENESS: Are major similarities or differences missed?
-5. BALANCE: Is the comparison balanced (not overemphasizing one source)?
+Evaluate the quality of the similarities and differences in the summary in a single step. Consider:
+1. ACCURACY_SIM: Are the similarities supported by source chunks?
+2. ACCURACY_DIFF: Are the differences supported by source chunks?
+{correctness_task}
+{completeness_idx}. COMPLETENESS: Are major similarities or differences missing?
+{balance_idx}. BALANCE: Is the comparison balanced across sources?
 
 Rate the compare quality on a scale of 0.0 to 1.0:
 - 1.0: Similarities and differences are accurate, well-grounded, and complete
@@ -286,15 +238,29 @@ Rate the compare quality on a scale of 0.0 to 1.0:
 
 Respond in JSON format:
 {{
-    "score": <float between 0 and 1>,
+    "accuracy_sim": <float between 0 and 1>,
+    "accuracy_diff": <float between 0 and 1>,
+{correctness_json}    "completeness": <float between 0 and 1>,
+    "balance": <float between 0 and 1>,
     "reasoning": "<explanation of compare quality assessment>",
-    "inaccurate_points": ["<list any similarity/difference points not supported by sources>"],
-    "missing_points": ["<list important similarities or differences that were omitted>"]
-}}"""
-
+    "inaccurate_points": ["<unsupported or wrong points>"],
+    "missing_points": ["<important missing points>"]
+}}
+"""
     response = llm_client.chat(prompt)
-    return _parse_json_response(response, "compare_quality")
-
+    result = _parse_json_response(response, "compare_quality", require_score=False)
+    result.pop("score", None)
+    score_keys = ["accuracy_sim", "accuracy_diff", "completeness", "balance"]
+    if include_correctness:
+        score_keys.append("correctness")
+    for key in score_keys:
+        if key in result:
+            result[key] = _clamp_score(result[key])
+    if not include_correctness:
+        result.pop("correctness", None)
+    result["inaccurate_points"] = _to_string_list(result.get("inaccurate_points", []))
+    result["missing_points"] = _to_string_list(result.get("missing_points", []))
+    return result
 
 def _extract_compare_parts(test_entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
@@ -314,20 +280,27 @@ def _extract_compare_parts(test_entry: Dict[str, Any]) -> Optional[Dict[str, Any
             return None
     policy_def = compare_sections.get("policy_definition", "")
     provider_def = compare_sections.get("provider_manual_definition", "")
-    sim = compare_sections.get("similarities", [])
-    diff = compare_sections.get("differences", [])
-    if isinstance(sim, str):
-        sim = [sim] if sim.strip() else []
-    if isinstance(diff, str):
-        diff = [diff] if diff.strip() else []
+    sim = _to_string_list(compare_sections.get("similarities", []))
+    diff = _to_string_list(compare_sections.get("differences", []))
+    comparison = _to_string_list(compare_sections.get("comparison", []))
+    # Current format: comparison[0] is similarity, comparison[1] is difference.
+    # Keep backward compatibility when explicit similarities/differences are absent.
+    if not sim and not diff and comparison:
+        if len(comparison) >= 1:
+            sim = [comparison[0]]
+        if len(comparison) >= 2:
+            diff = [comparison[1]]
+        if len(comparison) > 2:
+            diff.extend(comparison[2:])
     retrieved = test_entry.get("retrieved_docs", {})
-    policy_chunks = retrieved.get("policy", [])
-    provider_chunks = retrieved.get("provider_manual", [])
+    policy_chunks = _normalize_retrieved_chunks(retrieved.get("policy", []))
+    provider_chunks = _normalize_retrieved_chunks(retrieved.get("provider_manual", []))
     return {
         "policy_definition": str(policy_def) if policy_def else "",
         "provider_manual_definition": str(provider_def) if provider_def else "",
         "similarities": list(sim),
         "differences": list(diff),
+        "comparison": list(comparison),
         "policy_chunks": list(policy_chunks),
         "provider_chunks": list(provider_chunks),
     }
@@ -344,9 +317,8 @@ def evaluate_compare_test_results(
     Evaluate answer_compare_definitions results:
     1. Policy side: faithfulness, answer_relevance, correctness (reuse LLMEvaluator)
     2. Provider side: same metrics
-    3. Cross-source correlation: policy vs provider definitions
-    4. Compare quality: similarities/differences accuracy
-    5. Format compliance: raw LLM output (answer field) vs expected JSON schema
+    3. Query alignment: policy def, provider def, and comparison vs query
+    4. Compare quality: similarities/differences accuracy_sim, accuracy_diff, correctness, completeness, balance.
     """
     print(f"Loading compare results from: {compare_results_path}")
     with open(compare_results_path, "r", encoding="utf-8") as f:
@@ -385,9 +357,8 @@ def evaluate_compare_test_results(
         "provider_faithfulness": [],
         "provider_answer_relevance": [],
         "provider_correctness": [],
-        "cross_source_correlation": [],
+        "query_alignment": [],
         "compare_quality": [],
-        "format_compliance": [],
         "overall": [],
     }
 
@@ -419,17 +390,12 @@ def evaluate_compare_test_results(
         similarities = parts.get("similarities", [])
         differences = parts.get("differences", [])
 
-        raw_answer = test_data.get("answer") or test_data.get("answers", "")
-        if isinstance(raw_answer, dict):
-            raw_answer = json.dumps(raw_answer, ensure_ascii=False)
-
         result: Dict[str, Any] = {
             "query": query_full,
             "policy": {},
             "provider": {},
-            "cross_source_correlation": {},
+            "query_alignment": {},
             "compare_quality": {},
-            "format_compliance": {},
             "overall_score": 0.0,
         }
 
@@ -467,59 +433,59 @@ def evaluate_compare_test_results(
                 if isinstance(v, dict) and "score" in v:
                     scores_by_metric[f"provider_{k}"].append(v["score"])
 
-        # --- 3. Cross-source correlation ---
-        if policy_def and provider_def:
-            print("  Evaluating cross-source correlation...")
-            corr = _evaluate_cross_source_correlation(
-                llm_client, query_full, concept, policy_def, provider_def
+        # --- 3. Query alignment ---
+        if similarities or differences:
+            print("  Evaluating query alignment...")
+            qa = _evaluate_query_alignment(
+                llm_client,
+                query_full,
+                concept,
+                similarities,
+                differences,
             )
-            result["cross_source_correlation"] = corr
-            scores_by_metric["cross_source_correlation"].append(corr["score"])
+            qa_metric_score = _derive_score_from_fields(qa, ["comparison_query_relevance"])
+            if qa_metric_score is not None:
+                qa["metric_score"] = qa_metric_score
+            result["query_alignment"] = qa
+            if qa_metric_score is not None:
+                scores_by_metric["query_alignment"].append(qa_metric_score)
 
         # --- 4. Compare quality (similarities / differences) ---
-        if policy_def and provider_def:
+        if similarities or differences:
             print("  Evaluating compare quality (similarities/differences)...")
             cq = _evaluate_compare_quality(
                 llm_client,
                 query_full,
                 concept,
-                policy_def,
-                provider_def,
                 similarities,
                 differences,
                 policy_chunks,
                 provider_chunks,
+                include_correctness=bool(gt_answer),
             )
+            cq_fields = ["accuracy_sim", "accuracy_diff", "completeness", "balance"]
+            if gt_answer:
+                cq_fields.append("correctness")
+            cq_metric_score = _derive_score_from_fields(
+                cq,
+                cq_fields,
+            )
+            if cq_metric_score is not None:
+                cq["metric_score"] = cq_metric_score
             result["compare_quality"] = cq
-            scores_by_metric["compare_quality"].append(cq["score"])
+            if cq_metric_score is not None:
+                scores_by_metric["compare_quality"].append(cq_metric_score)
 
-        # --- 5. Format compliance (raw LLM output schema) ---
-        if raw_answer:
-            print("  Evaluating format compliance (raw output schema)...")
-            fc = _evaluate_format_compliance(raw_answer)
-            result["format_compliance"] = fc
-            scores_by_metric["format_compliance"].append(fc["score"])
-        else:
-            result["format_compliance"] = {
-                "score": None,
-                "parse_ok": None,
-                "issues": ["Raw answer not provided - cannot check format"],
-                "reasoning": "Need 'answer' field with raw LLM output (before parse).",
-            }
-
-        # --- Overall (average of policy, provider, correlation, compare_quality, format_compliance) ---
+        # --- Overall (average of policy, provider, query_alignment, compare_quality) ---
         all_scores = []
         for section in (result.get("policy", {}), result.get("provider", {})):
             for v in section.values():
                 if isinstance(v, dict) and "score" in v:
                     all_scores.append(v["score"])
-        if result.get("cross_source_correlation", {}).get("score") is not None:
-            all_scores.append(result["cross_source_correlation"]["score"])
-        if result.get("compare_quality", {}).get("score") is not None:
-            all_scores.append(result["compare_quality"]["score"])
-        fc_score = result.get("format_compliance", {}).get("score")
-        if fc_score is not None:
-            all_scores.append(fc_score)
+        if result.get("query_alignment", {}).get("metric_score") is not None:
+            all_scores.append(result["query_alignment"]["metric_score"])
+        if result.get("compare_quality", {}).get("metric_score") is not None:
+            all_scores.append(result["compare_quality"]["metric_score"])
         result["overall_score"] = round(sum(all_scores) / len(all_scores), 3) if all_scores else 0.0
         scores_by_metric["overall"].append(result["overall_score"])
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Script to run LLM-based evaluation on answer_compare_definitions test results.
 
@@ -9,8 +8,9 @@ Input fields: question, concept, compare_sections, retrieved_docs. For format_co
 (LLM raw output schema check), include "answer" with the raw LLM generation before parse.
 
 Usage:
-# TODO: waiting for the testing data. refer to llm_evaluate_compare.py
-# python scripts/llm_evaluation_compare.py -t data/compare_results/FAKE_dummy_compare_test_data.json -o data/llm_eval_results/FAKE_dummy_compare_eval_output.json --limit 1 --model gemini-2.5-flash
+# TODO: waiting for the testing data to check correctness. refer to llm_evaluate_compare.py
+# /Users/sqtang37/Desktop/Columbia_Capstone-KPMG/.venv/bin/python scripts/llm_evaluation_compare.py -t data/comparison_llm_eval_cases/self_generated_test_cases.json -o data/comparison_llm_eval_results/self_generated_test_cases_eval.json --provider openai_official --model gpt-4o-mini 
+# --limit 1
 """
 
 import argparse
