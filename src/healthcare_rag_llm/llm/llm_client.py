@@ -58,7 +58,7 @@ class LLMClient:
             "options": {"temperature": temperature},
         }
         try:
-            r = self.session.post(url, json=payload, timeout=300)
+            r = self.session.post(url, json=payload, timeout=900)
             r.raise_for_status()
         except requests.exceptions.ConnectionError as exc:
             raise RuntimeError(
