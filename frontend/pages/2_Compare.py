@@ -572,8 +572,8 @@ for msg in st.session_state["compare_history"]:
 
         answer_body = text
         answer_body_is_html = False
-        # The first compare answer is rendered as custom HTML tables; follow-ups are plain markdown.
-        if (not is_followup) and compare_sections and not compare_sections.get("_parse_failed"):
+        # Render as custom HTML tables whenever valid compare_sections are available.
+        if compare_sections and not compare_sections.get("_parse_failed"):
             answer_body = format_compare_tables(compare_sections, retrieved_docs_grouped=retrieved_docs_grouped)
             answer_body_is_html = True
 
@@ -584,8 +584,8 @@ for msg in st.session_state["compare_history"]:
         )
         has_sources = bool(retrieved_docs) or has_grouped_sources
 
-        if is_followup:
-            # Follow-ups intentionally mirror app.py so markdown bullets/bold render naturally.
+        if is_followup and not answer_body_is_html:
+            # Fallback: follow-ups without valid compare_sections render as plain markdown.
             st.markdown(
                 """
 <div class="chat-row assistant">
@@ -597,7 +597,6 @@ for msg in st.session_state["compare_history"]:
             st.markdown("**Answer:**")
             display_text = text.strip()
             display_text = re.sub(r"^answer\s*:?\s*", "", display_text, count=1, flags=re.IGNORECASE).strip()
-            # Normalize inline bullets so follow-up formatting matches app.py behavior.
             display_text = re.sub(r" \* ", "\n- ", display_text)
             display_text = re.sub(r"(?m)^\s*\*\s+", "- ", display_text)
             display_text = re.sub(r" \- (?=[A-Za-z0-9\"'])", "\n- ", display_text)
@@ -716,19 +715,13 @@ if not is_generating_compare:
             )
 
             if has_assistant_response:
-                col1, col2, col3 = st.columns([1, 1, 1])
-                with col1:
-                    submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
-                with col2:
-                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
-                with col3:
-                    cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
-            else:
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
+                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
                 with col2:
                     cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
+            else:
+                submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -781,37 +774,27 @@ if "compare_pending_query" in st.session_state:
         try:
             rag_pipeline = get_rag_pipeline_lazy()
             if rag_pipeline:
-                if pending_is_followup:
-                    # Follow-ups use the standard Q&A path so the model can use conversation context.
-                    history_for_llm = st.session_state["compare_history"]
-                    result = rag_pipeline.answer_question(pending_query, history=history_for_llm)
-                    answer = result.get("answer", "No answer returned.")
-                    evidence_dict = result.get("evidence_dict", {})
-                    retrieved_docs = result.get("retrieved_docs", [])
-                    retrieved_docs_grouped = {}
-                    followup_questions = result.get("followup_questions", [])
-                    compare_sections = {}
-                else:
-                    # The initial compare turn uses the dedicated compare endpoint and richer table output.
-                    result = rag_pipeline.answer_compare_definitions(
-                        pending_query,
-                        concept=pending_query,
-                    )
-                    answer = result.get("answer", "No answer returned.")
-                    evidence_dict = result.get("evidence_dict", {})
-                    retrieved_docs = result.get("retrieved_docs", [])
-                    retrieved_docs_grouped = {}
-                    followup_questions = result.get("followup_questions", [])
-                    compare_sections = result.get("compare_sections", {})
-                    if isinstance(retrieved_docs, dict):
-                        # Preserve the split source groups for the side-by-side retrieved source table.
-                        policy_docs = retrieved_docs.get("policy", []) or []
-                        provider_docs = retrieved_docs.get("provider_manual", []) or []
-                        retrieved_docs_grouped = {
-                            "policy": policy_docs,
-                            "provider_manual": provider_docs,
-                        }
-                        retrieved_docs = policy_docs + provider_docs
+                # Both initial compare and follow-ups use the compare endpoint
+                # so the response always renders as the side-by-side table format.
+                result = rag_pipeline.answer_compare_definitions(
+                    pending_query,
+                    concept=pending_query,
+                )
+                answer = result.get("answer", "No answer returned.")
+                evidence_dict = result.get("evidence_dict", {})
+                retrieved_docs = result.get("retrieved_docs", [])
+                retrieved_docs_grouped = {}
+                followup_questions = result.get("followup_questions", [])
+                compare_sections = result.get("compare_sections", {})
+                if isinstance(retrieved_docs, dict):
+                    # Preserve the split source groups for the side-by-side retrieved source table.
+                    policy_docs = retrieved_docs.get("policy", []) or []
+                    provider_docs = retrieved_docs.get("provider_manual", []) or []
+                    retrieved_docs_grouped = {
+                        "policy": policy_docs,
+                        "provider_manual": provider_docs,
+                    }
+                    retrieved_docs = policy_docs + provider_docs
             else:
                 answer = (
                     "Mock mode: Backend not connected.\n"

@@ -301,6 +301,7 @@ Formatting requirements (strict):
         question: str,
         answer: str,
         retrieved_chunks: List[Dict],
+        mode: str = "qa",
     ) -> List[str]:
         """Generate follow-up questions that are answerable from already retrieved chunks."""
         try:
@@ -310,20 +311,42 @@ Formatting requirements (strict):
             allowed_chunk_ids = {str(chunk.get("chunk_id", "")) for chunk in retrieved_chunks if chunk.get("chunk_id")}
             context = self._format_chunks(retrieved_chunks, compact_text=True)
 
-            prompt = (
-                "You are generating suggested follow-up questions for a NYS Medicaid Q&A assistant.\n"
-                "Goal: produce questions that can be answered using ONLY the retrieved chunks provided below.\n"
-                "Hard rules:\n"
-                "1) Suggest exactly 3 concise follow-up questions.\n"
-                "2) Every suggested question must be directly answerable from the retrieved chunks.\n"
-                "3) For each question, include at least one supporting chunk_id from the retrieved chunks.\n"
-                "4) Do not use outside knowledge.\n"
-                "5) Return ONLY valid JSON (no markdown, no commentary) as an array with this schema:\n"
-                '[{"question":"...","supports":["chunk_id_1","chunk_id_2"]}]\n\n'
-                f"Original question:\n{question}\n\n"
-                f"Current answer (abbreviated):\n{answer[:500]}\n\n"
-                f"Retrieved chunks:\n{context}\n"
-            )
+            if mode == "compare":
+                prompt = (
+                    "You are generating suggested follow-up questions for a NYS Medicaid comparison assistant.\n"
+                    "The user just compared a concept across policy vs provider manual sources.\n"
+                    "Goal: produce questions that help the user dig deeper into the comparison, "
+                    "answerable using ONLY the retrieved chunks provided below.\n"
+                    "Hard rules:\n"
+                    "1) Suggest exactly 3 concise follow-up questions.\n"
+                    "2) Every suggested question must be directly answerable from the retrieved chunks.\n"
+                    "3) Each question should focus on ONE of these directions:\n"
+                    "   - Drill into a specific difference or similarity found in the comparison\n"
+                    "   - Compare a related concept across the same two source types (policy vs provider manual)\n"
+                    "   - Clarify which source is more current or authoritative for a specific point\n"
+                    "4) For each question, include at least one supporting chunk_id from the retrieved chunks.\n"
+                    "5) Do not use outside knowledge.\n"
+                    "6) Return ONLY valid JSON (no markdown, no commentary) as an array with this schema:\n"
+                    '[{"question":"...","supports":["chunk_id_1","chunk_id_2"]}]\n\n'
+                    f"Original question:\n{question}\n\n"
+                    f"Current answer (abbreviated):\n{answer[:500]}\n\n"
+                    f"Retrieved chunks:\n{context}\n"
+                )
+            else:
+                prompt = (
+                    "You are generating suggested follow-up questions for a NYS Medicaid Q&A assistant.\n"
+                    "Goal: produce questions that can be answered using ONLY the retrieved chunks provided below.\n"
+                    "Hard rules:\n"
+                    "1) Suggest exactly 3 concise follow-up questions.\n"
+                    "2) Every suggested question must be directly answerable from the retrieved chunks.\n"
+                    "3) For each question, include at least one supporting chunk_id from the retrieved chunks.\n"
+                    "4) Do not use outside knowledge.\n"
+                    "5) Return ONLY valid JSON (no markdown, no commentary) as an array with this schema:\n"
+                    '[{"question":"...","supports":["chunk_id_1","chunk_id_2"]}]\n\n'
+                    f"Original question:\n{question}\n\n"
+                    f"Current answer (abbreviated):\n{answer[:500]}\n\n"
+                    f"Retrieved chunks:\n{context}\n"
+                )
             raw = self.llm_client.chat(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.2,
@@ -496,11 +519,20 @@ Internal decision process:
         self.chat_history.add("assistant", llm_response)
         compare_sections = self._parse_compare_response(llm_response)
 
+        all_chunks = policy_final + provider_manual_final
+        followup_questions = self._generate_followup_questions(
+            question=question,
+            answer=llm_response,
+            retrieved_chunks=all_chunks,
+            mode="compare",
+        )
+
         return {
             "question": question,
             "concept": concept,
             "answer": llm_response,
             "compare_sections": compare_sections,
+            "followup_questions": followup_questions,
             "retrieved_docs": {
                 "policy": policy_final,
                 "provider_manual": provider_manual_final,

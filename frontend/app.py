@@ -431,19 +431,13 @@ if not is_generating_answer:
             )
 
             if has_assistant_response:
-                col1, col2, col3 = st.columns([1, 1, 1])
-                with col1:
-                    submitted = st.form_submit_button("📤 Submit", use_container_width=True)
-                with col2:
-                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
-                with col3:
-                    cleared = st.form_submit_button("🧹 Clear Chat", use_container_width=True)
-            else:
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    submitted = st.form_submit_button("📤 Submit", use_container_width=True)
+                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
                 with col2:
                     cleared = st.form_submit_button("🧹 Clear Chat", use_container_width=True)
+            else:
+                submitted = st.form_submit_button("📤 Submit", use_container_width=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
