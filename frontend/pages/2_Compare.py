@@ -6,6 +6,7 @@ import traceback
 import html
 import markdown
 import re
+from datetime import date, datetime
 
 # ============================================================
 # ========== PATH SETUP ======================================
@@ -233,7 +234,99 @@ def markdown_to_html(md_text: str) -> str:
     return markdown.markdown(normalized_md, extensions=["extra", "sane_lists"])
 
 
-def format_compare_tables(sections):
+def _parse_effective_date(value):
+    """Best-effort parse for document effective dates used in compare rendering."""
+    if not value:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    raw = str(value).strip()
+    if not raw or raw.upper() == "N/A":
+        return None
+    for parser in (
+        lambda s: datetime.fromisoformat(s).date(),
+        lambda s: datetime.strptime(s, "%Y-%m-%d").date(),
+        lambda s: datetime.strptime(s, "%B %Y").date(),
+        lambda s: datetime.strptime(s, "%b %Y").date(),
+        lambda s: datetime.strptime(s, "%B %d, %Y").date(),
+        lambda s: datetime.strptime(s, "%b %d, %Y").date(),
+    ):
+        try:
+            return parser(raw)
+        except ValueError:
+            continue
+    return None
+
+
+def _effective_date_label(doc):
+    return html.escape(str(doc.get("effective_date") or "N/A"))
+
+
+def _doc_display_name(doc):
+    title = str(doc.get("title", "")).strip()
+    doc_id = str(doc.get("doc_id", "")).strip()
+    return title or doc_id or "Unknown Document"
+
+
+def _latest_doc(docs):
+    dated_docs = []
+    for doc in docs or []:
+        parsed = _parse_effective_date(doc.get("effective_date"))
+        if parsed is not None:
+            dated_docs.append((parsed, doc))
+    if not dated_docs:
+        return None
+    dated_docs.sort(key=lambda item: item[0], reverse=True)
+    return dated_docs[0][1]
+
+
+def _build_recency_summary(retrieved_docs_grouped):
+    """Create a visible recency summary from retrieved policy/provider sources."""
+    policy_latest = _latest_doc(retrieved_docs_grouped.get("policy", []))
+    provider_latest = _latest_doc(retrieved_docs_grouped.get("provider_manual", []))
+
+    if not policy_latest and not provider_latest:
+        return (
+            "Recency could not be determined from the retrieved sources because no usable "
+            "effective dates were available."
+        )
+
+    parts = []
+    if policy_latest:
+        parts.append(
+            f"Newest policy source: {_doc_display_name(policy_latest)} "
+            f"(effective date: {_effective_date_label(policy_latest)})."
+        )
+    else:
+        parts.append("Newest policy source: effective date unavailable from the retrieved policy sources.")
+
+    if provider_latest:
+        parts.append(
+            f"Newest provider manual source: {_doc_display_name(provider_latest)} "
+            f"(effective date: {_effective_date_label(provider_latest)})."
+        )
+    else:
+        parts.append("Newest provider manual source: effective date unavailable from the retrieved provider manual sources.")
+
+    policy_date = _parse_effective_date(policy_latest.get("effective_date")) if policy_latest else None
+    provider_date = _parse_effective_date(provider_latest.get("effective_date")) if provider_latest else None
+
+    if policy_date and provider_date:
+        if policy_date > provider_date:
+            parts.append("Overall, the policy source is more up to date and should carry more weight for current guidance.")
+        elif provider_date > policy_date:
+            parts.append("Overall, the provider manual source is more up to date and should carry more weight for current guidance.")
+        else:
+            parts.append("Overall, the newest policy and provider manual sources are tied on effective date.")
+    else:
+        parts.append("Overall recency across source types cannot be fully determined because one or both effective dates are unavailable.")
+
+    return " ".join(parts)
+
+
+def format_compare_tables(sections, retrieved_docs_grouped=None):
     """Render compare definitions result as headline + 2 HTML tables + caveats."""
     headline = html.escape(sections.get("headline_summary", ""))
     policy_def = sections.get("policy_definition", "N/A")
@@ -241,9 +334,19 @@ def format_compare_tables(sections):
     similarities = sections.get("similarities", [])
     differences = sections.get("differences", [])
     caveats = sections.get("caveats")
+    retrieved_docs_grouped = retrieved_docs_grouped or {}
 
     citation_to_num = {}
     citation_order = []
+    doc_meta_by_name = {}
+
+    for docs in retrieved_docs_grouped.values():
+        for doc in docs or []:
+            display_name = _doc_display_name(doc)
+            doc_meta_by_name[display_name] = doc
+            doc_id = str(doc.get("doc_id", "")).strip()
+            if doc_id:
+                doc_meta_by_name[doc_id] = doc
 
     def _normalize_text_with_inline_numbers(text: str) -> str:
         # Replace raw inline citation strings with stable numeric references like [1].
@@ -314,15 +417,32 @@ def format_compare_tables(sections):
 
     references_html = ""
     if citation_order:
-        ref_items = "".join(
-            f"<li>[{i}] {html.escape(cite)}</li>" for i, cite in enumerate(citation_order, 1)
-        )
+        ref_items = []
+        for i, cite in enumerate(citation_order, 1):
+            base = cite.split("—", 1)[0].strip()
+            base_name = base.split(":", 1)[0].strip()
+            matched_doc = doc_meta_by_name.get(base_name) or doc_meta_by_name.get(base.strip())
+            effective_label = _effective_date_label(matched_doc) if matched_doc else "N/A"
+            ref_items.append(
+                f"<li>[{i}] {html.escape(cite)}"
+                f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
+            )
         references_html = (
             "<b>References:</b>"
-            f"<ol style='margin-top:0.5rem; padding-left:1.4rem;'>{ref_items}</ol>"
+            f"<ol style='margin-top:0.5rem; padding-left:1.4rem;'>{''.join(ref_items)}</ol>"
         )
 
+    recency_summary = html.escape(_build_recency_summary(retrieved_docs_grouped))
+    recency_html = (
+        "<div style='margin-bottom:0.8rem; padding:10px 12px; background:#EEF6FF; "
+        "border:1px solid #CFE3FF; border-radius:8px;'>"
+        "<b>Most Up-To-Date Source Signal:</b> "
+        f"{recency_summary}"
+        "</div>"
+    )
+
     return f"""
+    {recency_html}
     <p style="font-weight:600; margin-bottom:0.5rem;">{headline}</p>
     <b>Definitions:</b>
     {table1}
@@ -403,7 +523,7 @@ for msg in st.session_state["compare_history"]:
         answer_body_is_html = False
         # The first compare answer is rendered as custom HTML tables; follow-ups are plain markdown.
         if (not is_followup) and compare_sections and not compare_sections.get("_parse_failed"):
-            answer_body = format_compare_tables(compare_sections)
+            answer_body = format_compare_tables(compare_sections, retrieved_docs_grouped=retrieved_docs_grouped)
             answer_body_is_html = True
 
         answer_body_html = answer_body if answer_body_is_html else markdown_to_html(answer_body)

@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import date, datetime
 from typing import Dict, List, Optional
 from healthcare_rag_llm.llm.llm_client import LLMClient
 from healthcare_rag_llm.graph_builder.queries import query_chunks
@@ -60,6 +61,105 @@ class ResponseGenerator:
             return cleaned
         return cleaned[:max_chars].rstrip() + " ..."
 
+    @staticmethod
+    def _parse_effective_date(value) -> Optional[date]:
+        if not value:
+            return None
+        if isinstance(value, date) and not isinstance(value, datetime):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        raw = str(value).strip()
+        if not raw or raw.upper() == "N/A":
+            return None
+        for parser in (
+            lambda s: datetime.fromisoformat(s).date(),
+            lambda s: datetime.strptime(s, "%Y-%m-%d").date(),
+            lambda s: datetime.strptime(s, "%B %Y").date(),
+            lambda s: datetime.strptime(s, "%b %Y").date(),
+            lambda s: datetime.strptime(s, "%B %d, %Y").date(),
+            lambda s: datetime.strptime(s, "%b %d, %Y").date(),
+        ):
+            try:
+                return parser(raw)
+            except ValueError:
+                continue
+        return None
+
+    @classmethod
+    def _latest_chunk(cls, chunks: List[Dict]) -> Optional[Dict]:
+        dated_chunks = []
+        for chunk in chunks or []:
+            parsed = cls._parse_effective_date(chunk.get("effective_date"))
+            if parsed is not None:
+                dated_chunks.append((parsed, chunk))
+        if not dated_chunks:
+            return None
+        dated_chunks.sort(key=lambda item: item[0], reverse=True)
+        return dated_chunks[0][1]
+
+    @classmethod
+    def _build_question_recency_brief(cls, chunks: List[Dict]) -> str:
+        newest_chunk = cls._latest_chunk(chunks)
+        if not newest_chunk:
+            return (
+                "Recency briefing:\n"
+                "- No usable effective dates were available in the final retrieved chunks.\n"
+                "- Do not guess recency. If recency matters, say it could not be determined from the provided metadata."
+            )
+
+        doc_title = cls._get_doc_title(newest_chunk)
+        effective_date = newest_chunk.get("effective_date") or "N/A"
+        pages = newest_chunk.get("pages", "N/A")
+        return (
+            "Recency briefing:\n"
+            f"- Newest relevant retrieved source: {doc_title}\n"
+            f"- Effective date: {effective_date}\n"
+            f"- Pages: {pages}\n"
+            "- Put the most weight on this source when answering the user's current-guidance question unless the user explicitly asks about a historical period.\n"
+            "- If older sources differ, explain that they are older and treat them as supporting or superseded context."
+        )
+
+    @classmethod
+    def _build_compare_recency_brief(cls, policy_chunks: List[Dict], provider_manual_chunks: List[Dict]) -> str:
+        policy_latest = cls._latest_chunk(policy_chunks)
+        provider_latest = cls._latest_chunk(provider_manual_chunks)
+
+        def _side_lines(label: str, chunk: Optional[Dict]) -> List[str]:
+            if not chunk:
+                return [
+                    f"- Newest {label} source: unavailable",
+                    f"- Newest {label} effective date: unavailable",
+                ]
+            return [
+                f"- Newest {label} source: {cls._get_doc_title(chunk)}",
+                f"- Newest {label} effective date: {chunk.get('effective_date') or 'N/A'}",
+                f"- Newest {label} pages: {chunk.get('pages', 'N/A')}",
+            ]
+
+        lines = ["Recency briefing:"]
+        lines.extend(_side_lines("policy", policy_latest))
+        lines.extend(_side_lines("provider manual", provider_latest))
+
+        policy_date = cls._parse_effective_date(policy_latest.get("effective_date")) if policy_latest else None
+        provider_date = cls._parse_effective_date(provider_latest.get("effective_date")) if provider_latest else None
+
+        if policy_date and provider_date:
+            if policy_date > provider_date:
+                lines.append("- More up-to-date source type overall: policy")
+                lines.append("- Put the most weight on the newest policy source when describing current guidance, while still explaining any meaningful provider-manual differences.")
+            elif provider_date > policy_date:
+                lines.append("- More up-to-date source type overall: provider manual")
+                lines.append("- Put the most weight on the newest provider manual source when describing current guidance, while still explaining any meaningful policy differences.")
+            else:
+                lines.append("- More up-to-date source type overall: tied on effective date")
+                lines.append("- Treat both source types as equally current on recency grounds and resolve the answer using grounded content differences.")
+        else:
+            lines.append("- More up-to-date source type overall: cannot be determined from available effective dates")
+            lines.append("- Do not guess overall recency; say so explicitly if it matters to the answer.")
+
+        return "\n".join(lines)
+
     @classmethod
     def _format_chunks(cls, chunks: List[Dict], compact_text: bool = False) -> str:
         if not chunks:
@@ -67,13 +167,14 @@ class ResponseGenerator:
         return "\n\n".join(
             [
                 f"[Document Title: {cls._get_doc_title(chunk)}] -[Chunk ID: {chunk['chunk_id']}]"
+                f"-[Effective Date: {chunk.get('effective_date') or 'N/A'}]"
                 f"-[pages: {chunk['pages']}] - [Chunk Content: "
                 f"{cls._compact_text(chunk.get('text', '')) if compact_text else chunk.get('text', '')}]"
                 for chunk in chunks
             ]
         )
 
-    def answer_question(self, question: str, top_k: int = 5, rerank_top_k: int = 20, history: Optional[List[Dict]] = None) -> Dict:
+    def answer_question(self, question: str, top_k: int = 6, rerank_top_k: int = 30, history: Optional[List[Dict]] = None) -> Dict:
         """
         Full question-answering pipeline.
 
@@ -119,6 +220,7 @@ class ResponseGenerator:
         
         # 3. Context
         context = self._format_chunks(final_chunks)
+        recency_brief = self._build_question_recency_brief(final_chunks)
         
         # 6. Generate response 
         user_msg = f"""
@@ -129,13 +231,29 @@ Context Chunks (authoritative; cite only these):
 {context}
 
 Chunks format:
-[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[Effective Date: <effective_date or N/A>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+Use the provided Effective Date metadata to determine which grounded source is the most recent.
+
+{recency_brief}
 
 Output sections (exactly):
 - Answer
 - Evidence (quoted)
 - Caveats (if any)
 Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, YYYY].
+Answer requirements:
+- Start with a direct answer to the user's question.
+- If dates are available, use clear wording such as "According to the newest relevant source dated ..." near the beginning of the answer.
+- State what the newest source says before discussing older supporting material.
+- Put the most effort on the newest-source briefing above when deciding how to frame the answer.
+- If multiple sources conflict, explain which source is newer and give it more weight unless the user explicitly asks about a historical period or date-bounded question.
+- If dates are missing or unclear, say that explicitly instead of guessing.
+- Keep the answer grounded in the provided chunks only.
+Internal decision process:
+- Determine whether the user is asking about current guidance or a historical period.
+- Identify the most relevant chunks for the question.
+- Use Effective Date metadata to find the newest relevant source.
+- Answer from the newest relevant source first, then add older grounded context only if it helps.
 If Caveats has no meaningful content, output exactly:
 Caveats
 None
@@ -244,8 +362,8 @@ Formatting requirements (strict):
         self,
         question: str,
         concept: Optional[str] = None,
-        top_k_per_source: int = 3,
-        rerank_top_k: int = 20,
+        top_k_per_source: int = 4,
+        rerank_top_k: int = 30,
     ) -> Dict:
         """
         Compare a concept definition across policy vs provider manual documents.
@@ -312,6 +430,7 @@ Formatting requirements (strict):
 
         policy_context = self._format_chunks(policy_final, compact_text=True)
         provider_context = self._format_chunks(provider_manual_final, compact_text=True)
+        recency_brief = self._build_compare_recency_brief(policy_final, provider_manual_final)
         target_concept = concept if concept and concept.strip() else "the requested concept"
 
         user_msg = f"""
@@ -328,11 +447,14 @@ Provider Manual Context Chunks (authoritative; cite only these):
 {provider_context}
 
 Chunks format:
-[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[Effective Date: <effective_date or N/A>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+Use the provided Effective Date metadata to determine which grounded source is more recent.
+
+{recency_brief}
 
 Output as a valid JSON object with exactly these keys:
 {{
-  "headline_summary": "1-2 sentence summary comparing both sources",
+  "headline_summary": "1-2 sentence summary comparing both sources and clearly surfacing which source is more recent when supported by dates",
   "policy_definition": "Policy definition with inline citations [doc_title:page - date]",
   "provider_manual_definition": "Provider manual definition with inline citations",
   "similarities": ["similarity point 1 with citation", "similarity point 2"],
@@ -341,7 +463,24 @@ Output as a valid JSON object with exactly these keys:
 }}
 Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
 Each field must have inline citations like [doc_title or doc_title:page — Mon DD, YYYY].
-If either side has insufficient evidence, state that explicitly in the relevant field.
+Comparison requirements:
+- In "headline_summary", answer the user's question directly and make the recency conclusion explicit.
+- Use clear wording such as "According to the newest policy source dated ..." or "According to the newest provider manual source dated ...".
+- Explicitly state the newest relevant policy date and the newest relevant provider manual date when available.
+- Clearly say which source type is more up to date overall for this issue.
+- Put the most effort on the recency briefing above when deciding which source should guide the user now.
+- If the provider manual is more recent, say so in the headline summary and explain that it should receive more weight by default.
+- If policy is more recent, say so in the headline summary and explain that it should receive more weight by default.
+- If dates are missing or unclear, say that explicitly instead of guessing.
+- If the user explicitly asks about a historical period, honor that instead of defaulting to the newest source.
+- If either side has insufficient evidence, state that explicitly in the relevant field.
+Internal decision process:
+- Identify the newest relevant policy chunk by Effective Date.
+- Identify the newest relevant provider manual chunk by Effective Date.
+- Compare those newest sources first.
+- In "policy_definition", lead with the newest policy evidence.
+- In "provider_manual_definition", lead with the newest provider manual evidence.
+- Use older evidence only as background or to explain differences.
 """.strip()
 
         messages = []

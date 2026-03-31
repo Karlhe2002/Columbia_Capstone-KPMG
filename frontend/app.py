@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
 import html
+from datetime import date, datetime
 
 # ============================================================
 # ========== PATH SETUP ======================================
@@ -134,6 +135,25 @@ def _remove_none_caveats(text: str) -> str:
     return text
 
 
+def _extract_answer_only(text: str) -> str:
+    """
+    Keep only the answer portion of the model output so UI-controlled Evidence
+    and recency blocks can be rendered in a stable order.
+    """
+    if not text:
+        return ""
+
+    cleaned = text.strip()
+    cleaned = re.sub(r'^answer\s*:?\s*', '', cleaned, count=1, flags=re.IGNORECASE).strip()
+    cleaned = _remove_none_caveats(cleaned)
+
+    evidence_match = re.search(r'(?im)^\s*\*{0,2}evidence(?:\s*\([^)]*\))?\*{0,2}\s*:?\s*$', cleaned)
+    if evidence_match:
+        cleaned = cleaned[:evidence_match.start()].rstrip()
+
+    return cleaned
+
+
 def format_evidence_dict(evidence_dict):
     """format evidence_dict as HTML list"""
     if not evidence_dict:
@@ -168,6 +188,7 @@ def format_retrieved_docs(retrieved_docs):
         doc_id = html.escape(str(doc.get("doc_id", "Unknown")))
         display_name = title if title else doc_id
         url = html.escape(str(doc.get("url", "N/A")))
+        effective_date = html.escape(str(doc.get("effective_date", "N/A")))
 
         pages = html.escape(str(doc.get("pages", "N/A")))
         snippet = html.escape(str(doc.get("text", ""))[:300]).replace("\n", " ")
@@ -175,12 +196,73 @@ def format_retrieved_docs(retrieved_docs):
         html_lines.append(
             "<li>"
             f"<strong>{display_name}</strong> (pages {pages})<br>"
+            f"<span style=\"color:#666; font-size:0.9em;\">Effective date: {effective_date}</span><br>"
             f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">{url}</a><br>"
             f"<span style=\"color:#666; font-size:0.9em;\">{snippet}...</span>"
             "</li>"
         )
 
     return "\n".join(html_lines)
+
+
+def _parse_effective_date(value):
+    """Best-effort parse for effective dates used in Q&A recency display."""
+    if not value:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    raw = str(value).strip()
+    if not raw or raw.upper() == "N/A":
+        return None
+    for parser in (
+        lambda s: datetime.fromisoformat(s).date(),
+        lambda s: datetime.strptime(s, "%Y-%m-%d").date(),
+        lambda s: datetime.strptime(s, "%B %Y").date(),
+        lambda s: datetime.strptime(s, "%b %Y").date(),
+        lambda s: datetime.strptime(s, "%B %d, %Y").date(),
+        lambda s: datetime.strptime(s, "%b %d, %Y").date(),
+    ):
+        try:
+            return parser(raw)
+        except ValueError:
+            continue
+    return None
+
+
+def format_recency_summary(retrieved_docs):
+    """Create a visible recency summary from retrieved Q&A sources."""
+    if not retrieved_docs:
+        return ""
+
+    dated_docs = []
+    for doc in retrieved_docs:
+        parsed = _parse_effective_date(doc.get("effective_date"))
+        if parsed is not None:
+            dated_docs.append((parsed, doc))
+
+    if not dated_docs:
+        summary = (
+            "Most up-to-date source signal: recency could not be determined from the "
+            "retrieved sources because no usable effective dates were available."
+        )
+    else:
+        dated_docs.sort(key=lambda item: item[0], reverse=True)
+        newest_doc = dated_docs[0][1]
+        newest_title = html.escape(str(newest_doc.get("title") or newest_doc.get("doc_id") or "Unknown Document"))
+        newest_date = html.escape(str(newest_doc.get("effective_date") or "N/A"))
+        summary = (
+            "Most up-to-date source signal: "
+            f"the newest retrieved source is <strong>{newest_title}</strong> "
+            f"(effective date: {newest_date})."
+        )
+
+    return (
+        "<div style='margin:0.4rem 0 0.8rem 0; padding:10px 12px; background:#EEF6FF; "
+        "border:1px solid #CFE3FF; border-radius:8px;'>"
+        f"{summary}</div>"
+    )
 
 
 # ============================================================
@@ -259,6 +341,7 @@ for msg in st.session_state["history"]:
         formatted_evidence = format_evidence_dict(evidence_dict)
         retrieved_docs = msg.get("retrieved_docs", [])
         formatted_sources = format_retrieved_docs(retrieved_docs) if retrieved_docs else ""
+        recency_summary_html = format_recency_summary(retrieved_docs) if retrieved_docs else ""
 
         st.markdown(
             """
@@ -269,10 +352,9 @@ for msg in st.session_state["history"]:
             unsafe_allow_html=True,
         )
         st.markdown("**Answer:**")
-        display_text = text.strip()
-        import re
-        display_text = re.sub(r'^answer\s*:?\s*', '', display_text, count=1, flags=re.IGNORECASE).strip()
-        display_text = _remove_none_caveats(display_text)
+        if recency_summary_html:
+            st.markdown(recency_summary_html, unsafe_allow_html=True)
+        display_text = _extract_answer_only(text)
         st.markdown(display_text)
         if evidence_dict:
             st.markdown("")
