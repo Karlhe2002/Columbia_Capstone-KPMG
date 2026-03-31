@@ -174,7 +174,7 @@ class ResponseGenerator:
             ]
         )
 
-    def answer_question(self, question: str, top_k: int = 6, rerank_top_k: int = 30, history: Optional[List[Dict]] = None) -> Dict:
+    def answer_question(self, question: str, top_k: int = 8, rerank_top_k: int = 30, history: Optional[List[Dict]] = None) -> Dict:
         """
         Full question-answering pipeline.
 

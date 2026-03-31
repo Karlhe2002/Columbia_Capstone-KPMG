@@ -142,7 +142,7 @@ def format_retrieved_docs(retrieved_docs):
 
 
 def format_retrieved_docs_compare_table(retrieved_docs_grouped):
-    """Render compare retrieved docs as a 2-column table: policy vs provider manual."""
+    """Render compare retrieved docs as a 2-column table: provider manual vs Medicaid Update."""
     policy_docs = retrieved_docs_grouped.get("policy", []) or []
     provider_docs = retrieved_docs_grouped.get("provider_manual", []) or []
 
@@ -175,14 +175,14 @@ def format_retrieved_docs_compare_table(retrieved_docs_grouped):
     <table style="width:100%; border-collapse:collapse; margin:0.6rem 0 0.2rem 0; table-layout:fixed;">
       <thead>
         <tr style="background:#E8F0FE;">
-          <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Policy Sources</th>
           <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Provider Manual Sources</th>
+          <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Medicaid Update Sources</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{policy_html}</td>
           <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{provider_html}</td>
+          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{policy_html}</td>
         </tr>
       </tbody>
     </table>
@@ -338,25 +338,75 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
 
     citation_to_num = {}
     citation_order = []
-    doc_meta_by_name = {}
+    known_docs = {}
 
     for docs in retrieved_docs_grouped.values():
         for doc in docs or []:
             display_name = _doc_display_name(doc)
-            doc_meta_by_name[display_name] = doc
+            known_docs[display_name] = doc
             doc_id = str(doc.get("doc_id", "")).strip()
             if doc_id:
-                doc_meta_by_name[doc_id] = doc
+                known_docs[doc_id] = doc
+
+    def _match_doc_for_citation(cite: str):
+        cleaned = str(cite or "").strip()
+        if not cleaned:
+            return None
+        best_match = None
+        best_len = -1
+        for candidate, doc in known_docs.items():
+            candidate = str(candidate or "").strip()
+            if not candidate:
+                continue
+            if cleaned == candidate or cleaned.startswith(candidate + ":") or cleaned.startswith(candidate + " —") or cleaned.startswith(candidate + " â€”"):
+                if len(candidate) > best_len:
+                    best_match = doc
+                    best_len = len(candidate)
+        return best_match
+
+    def _date_from_citation_text(cite: str) -> str:
+        cleaned = str(cite or "").strip()
+        if not cleaned:
+            return "N/A"
+        for sep in (" — ", " â€” "):
+            if sep in cleaned:
+                tail = cleaned.rsplit(sep, 1)[1].strip()
+                if _parse_effective_date(tail):
+                    return html.escape(tail)
+        return "N/A"
+
+    def _strip_trailing_date_from_citation(cite: str) -> str:
+        cleaned = str(cite or "").strip()
+        if not cleaned:
+            return ""
+        for sep in (" â€” ", " Ã¢â‚¬â€ "):
+            if sep in cleaned:
+                head, tail = cleaned.rsplit(sep, 1)
+                if _parse_effective_date(tail.strip()):
+                    return head.strip()
+        return cleaned
 
     def _normalize_text_with_inline_numbers(text: str) -> str:
         # Replace raw inline citation strings with stable numeric references like [1].
         if text is None:
             return ""
         raw = str(text)
+
+        def _is_valid_citation_text(cite: str) -> bool:
+            cleaned = re.sub(r"\s+", " ", (cite or "")).strip()
+            if not cleaned:
+                return False
+            if cleaned in {"...", "..", "."}:
+                return False
+            if re.fullmatch(r"[\.\,\;\:\-\u2013\u2014\s]+", cleaned):
+                return False
+            if len(re.sub(r"[\W_]+", "", cleaned)) < 3:
+                return False
+            return True
         
         def _replace_citation(match):
             cite = match.group(1).strip()
-            if not cite:
+            if not _is_valid_citation_text(cite):
                 return ""
             if cite not in citation_to_num:
                 citation_to_num[cite] = len(citation_order) + 1
@@ -381,14 +431,14 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
       <thead>
         <tr style="background:#E8F0FE;">
-          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Policy Definition</th>
           <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Provider Manual Definition</th>
+          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Medicaid Update Definition</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def_html}</td>
           <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{provider_def_html}</td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def_html}</td>
         </tr>
       </tbody>
     </table>
@@ -421,10 +471,11 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
         for i, cite in enumerate(citation_order, 1):
             base = cite.split("—", 1)[0].strip()
             base_name = base.split(":", 1)[0].strip()
-            matched_doc = doc_meta_by_name.get(base_name) or doc_meta_by_name.get(base.strip())
-            effective_label = _effective_date_label(matched_doc) if matched_doc else "N/A"
+            matched_doc = _match_doc_for_citation(cite)
+            effective_label = _effective_date_label(matched_doc) if matched_doc else _date_from_citation_text(cite)
+            display_cite = re.sub(r"\s*[-\u2013\u2014]\s*\d{4}-\d{2}-\d{2}\s*$", "", str(cite)).strip()
             ref_items.append(
-                f"<li>[{i}] {html.escape(cite)}"
+                f"<li>[{i}] {html.escape(display_cite)}"
                 f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
             )
         references_html = (
