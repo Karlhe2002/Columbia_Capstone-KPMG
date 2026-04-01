@@ -15,6 +15,7 @@ Follow these rules strictly:
    - First summarize what policy documents define.
    - Then summarize what provider manual documents define.
    - Then provide similarities and differences.
+   - The comparison should still answer the user's question directly, not just describe both sides.
 
 3. Every substantive claim must include a quote and citation.
    - Quote the exact supporting line(s).
@@ -25,12 +26,34 @@ Follow these rules strictly:
    - Preserve exact scope terms, eligibility language, constraints, dates, and exceptions.
    - Do not merge or normalize meanings unless explicitly supported by text from both sources.
 
-5. Output as a single valid JSON object with exactly these keys:
+5. Recency is highly important and must be made visible to the user.
+   - In the headline summary, explicitly tell the user which source is more recent when the dates support that conclusion.
+   - The headline summary should lead with the newer source when dates support that conclusion.
+   - If the provider manual is newer than policy, say so clearly and explain that it should receive more weight by default unless the user asked a historical question.
+   - If policy is newer than the provider manual, say so clearly and explain that it should receive more weight by default unless the user asked a historical question.
+   - If dates are missing or unclear, say that explicitly instead of guessing.
+
+6. Make the comparison decision-useful.
+   - Do not stop at listing differences; explain which source should guide the user now when the evidence supports that conclusion.
+   - If one source is older but still relevant, frame it as background rather than equally controlling guidance.
+   - If the evidence is mixed or incomplete, say that explicitly.
+
+7. Use this decision process internally before writing the comparison:
+   - Identify the user's actual comparison question or decision point.
+   - Review the policy chunks and identify the newest relevant policy source by Effective Date.
+   - Review the provider manual chunks and identify the newest relevant provider manual source by Effective Date.
+   - Compare those newest sources first before discussing older supporting material.
+   - Decide whether policy or provider manual is more up to date for this issue.
+   - In the headline summary, explicitly say which side is newer and which side should guide the user now.
+   - In each definition field, lead with the newest source from that source type.
+   - Use older chunks only as supporting background, not as equal guidance, unless the user asked a historical question.
+
+8. Output as a single valid JSON object with exactly these keys:
    {
-     "headline_summary": "1-2 sentence summary comparing both sources",
-     "policy_definition": "Policy definition with inline citations [doc_title:page - date]",
-     "provider_manual_definition": "Provider manual definition with inline citations",
-     "similarities": ["similarity point 1 with citation", "similarity point 2 with citation"],
+      "headline_summary": "1-2 sentence summary comparing both sources",
+      "policy_definition": "Policy definition with inline citations [doc_title:page - date]",
+      "provider_manual_definition": "Provider manual definition with inline citations",
+      "similarities": ["similarity point 1 with citation", "similarity point 2 with citation"],
      "differences": ["difference point 1 with citation", "difference point 2 with citation"],
      "caveats": "Any caveats, or null if none"
    }
@@ -38,6 +61,6 @@ Follow these rules strictly:
    - Include inline citations in every field, not as a separate section.
    - Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
 
-6. Keep the answer concise and comparison-first.
-   - In "headline_summary", provide at most 2 sentences.
+9. Keep the answer concise and comparison-first.
+   - In "headline_summary", provide at most 2 sentences and make the first sentence recency-aware when dates are available.
    - In policy/provider definition fields, include only the essential definition scope and constraints.

@@ -6,6 +6,7 @@ import traceback
 import html
 import markdown
 import re
+from datetime import date, datetime
 
 # ============================================================
 # ========== PATH SETUP ======================================
@@ -149,7 +150,7 @@ def format_retrieved_docs(retrieved_docs):
 
 
 def format_retrieved_docs_compare_table(retrieved_docs_grouped):
-    """Render compare retrieved docs as a 2-column table: policy vs provider manual."""
+    """Render compare retrieved docs as a 2-column table: provider manual vs Medicaid Update."""
     policy_docs = retrieved_docs_grouped.get("policy", []) or []
     provider_docs = retrieved_docs_grouped.get("provider_manual", []) or []
 
@@ -182,14 +183,14 @@ def format_retrieved_docs_compare_table(retrieved_docs_grouped):
     <table style="width:100%; border-collapse:collapse; margin:0.6rem 0 0.2rem 0; table-layout:fixed;">
       <thead>
         <tr style="background:#E8F0FE;">
-          <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Policy Sources</th>
           <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Provider Manual Sources</th>
+          <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Medicaid Update Sources</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{policy_html}</td>
           <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{provider_html}</td>
+          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{policy_html}</td>
         </tr>
       </tbody>
     </table>
@@ -241,7 +242,99 @@ def markdown_to_html(md_text: str) -> str:
     return markdown.markdown(normalized_md, extensions=["extra", "sane_lists"])
 
 
-def format_compare_tables(sections):
+def _parse_effective_date(value):
+    """Best-effort parse for document effective dates used in compare rendering."""
+    if not value:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+    raw = str(value).strip()
+    if not raw or raw.upper() == "N/A":
+        return None
+    for parser in (
+        lambda s: datetime.fromisoformat(s).date(),
+        lambda s: datetime.strptime(s, "%Y-%m-%d").date(),
+        lambda s: datetime.strptime(s, "%B %Y").date(),
+        lambda s: datetime.strptime(s, "%b %Y").date(),
+        lambda s: datetime.strptime(s, "%B %d, %Y").date(),
+        lambda s: datetime.strptime(s, "%b %d, %Y").date(),
+    ):
+        try:
+            return parser(raw)
+        except ValueError:
+            continue
+    return None
+
+
+def _effective_date_label(doc):
+    return html.escape(str(doc.get("effective_date") or "N/A"))
+
+
+def _doc_display_name(doc):
+    title = str(doc.get("title", "")).strip()
+    doc_id = str(doc.get("doc_id", "")).strip()
+    return title or doc_id or "Unknown Document"
+
+
+def _latest_doc(docs):
+    dated_docs = []
+    for doc in docs or []:
+        parsed = _parse_effective_date(doc.get("effective_date"))
+        if parsed is not None:
+            dated_docs.append((parsed, doc))
+    if not dated_docs:
+        return None
+    dated_docs.sort(key=lambda item: item[0], reverse=True)
+    return dated_docs[0][1]
+
+
+def _build_recency_summary(retrieved_docs_grouped):
+    """Create a visible recency summary from retrieved policy/provider sources."""
+    policy_latest = _latest_doc(retrieved_docs_grouped.get("policy", []))
+    provider_latest = _latest_doc(retrieved_docs_grouped.get("provider_manual", []))
+
+    if not policy_latest and not provider_latest:
+        return (
+            "Recency could not be determined from the retrieved sources because no usable "
+            "effective dates were available."
+        )
+
+    parts = []
+    if policy_latest:
+        parts.append(
+            f"Newest policy source: {_doc_display_name(policy_latest)} "
+            f"(effective date: {_effective_date_label(policy_latest)})."
+        )
+    else:
+        parts.append("Newest policy source: effective date unavailable from the retrieved policy sources.")
+
+    if provider_latest:
+        parts.append(
+            f"Newest provider manual source: {_doc_display_name(provider_latest)} "
+            f"(effective date: {_effective_date_label(provider_latest)})."
+        )
+    else:
+        parts.append("Newest provider manual source: effective date unavailable from the retrieved provider manual sources.")
+
+    policy_date = _parse_effective_date(policy_latest.get("effective_date")) if policy_latest else None
+    provider_date = _parse_effective_date(provider_latest.get("effective_date")) if provider_latest else None
+
+    if policy_date and provider_date:
+        if policy_date > provider_date:
+            parts.append("Overall, the policy source is more up to date and should carry more weight for current guidance.")
+        elif provider_date > policy_date:
+            parts.append("Overall, the provider manual source is more up to date and should carry more weight for current guidance.")
+        else:
+            parts.append("Overall, the newest policy and provider manual sources are tied on effective date.")
+    else:
+        parts.append("Overall recency across source types cannot be fully determined because one or both effective dates are unavailable.")
+
+    return " ".join(parts)
+
+
+def format_compare_tables(sections, retrieved_docs_grouped=None):
     """Render compare definitions result as headline + 2 HTML tables + caveats."""
     headline = html.escape(sections.get("headline_summary", ""))
     policy_def = sections.get("policy_definition", "N/A")
@@ -249,19 +342,79 @@ def format_compare_tables(sections):
     similarities = sections.get("similarities", [])
     differences = sections.get("differences", [])
     caveats = sections.get("caveats")
+    retrieved_docs_grouped = retrieved_docs_grouped or {}
 
     citation_to_num = {}
     citation_order = []
+    known_docs = {}
+
+    for docs in retrieved_docs_grouped.values():
+        for doc in docs or []:
+            display_name = _doc_display_name(doc)
+            known_docs[display_name] = doc
+            doc_id = str(doc.get("doc_id", "")).strip()
+            if doc_id:
+                known_docs[doc_id] = doc
+
+    def _match_doc_for_citation(cite: str):
+        cleaned = str(cite or "").strip()
+        if not cleaned:
+            return None
+        best_match = None
+        best_len = -1
+        for candidate, doc in known_docs.items():
+            candidate = str(candidate or "").strip()
+            if not candidate:
+                continue
+            if cleaned == candidate or cleaned.startswith(candidate + ":") or cleaned.startswith(candidate + " —") or cleaned.startswith(candidate + " â€”"):
+                if len(candidate) > best_len:
+                    best_match = doc
+                    best_len = len(candidate)
+        return best_match
+
+    def _date_from_citation_text(cite: str) -> str:
+        cleaned = str(cite or "").strip()
+        if not cleaned:
+            return "N/A"
+        for sep in (" — ", " â€” "):
+            if sep in cleaned:
+                tail = cleaned.rsplit(sep, 1)[1].strip()
+                if _parse_effective_date(tail):
+                    return html.escape(tail)
+        return "N/A"
+
+    def _strip_trailing_date_from_citation(cite: str) -> str:
+        cleaned = str(cite or "").strip()
+        if not cleaned:
+            return ""
+        for sep in (" â€” ", " Ã¢â‚¬â€ "):
+            if sep in cleaned:
+                head, tail = cleaned.rsplit(sep, 1)
+                if _parse_effective_date(tail.strip()):
+                    return head.strip()
+        return cleaned
 
     def _normalize_text_with_inline_numbers(text: str) -> str:
         # Replace raw inline citation strings with stable numeric references like [1].
         if text is None:
             return ""
         raw = str(text)
+
+        def _is_valid_citation_text(cite: str) -> bool:
+            cleaned = re.sub(r"\s+", " ", (cite or "")).strip()
+            if not cleaned:
+                return False
+            if cleaned in {"...", "..", "."}:
+                return False
+            if re.fullmatch(r"[\.\,\;\:\-\u2013\u2014\s]+", cleaned):
+                return False
+            if len(re.sub(r"[\W_]+", "", cleaned)) < 3:
+                return False
+            return True
         
         def _replace_citation(match):
             cite = match.group(1).strip()
-            if not cite:
+            if not _is_valid_citation_text(cite):
                 return ""
             if cite not in citation_to_num:
                 citation_to_num[cite] = len(citation_order) + 1
@@ -286,14 +439,14 @@ def format_compare_tables(sections):
     <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
       <thead>
         <tr style="background:#E8F0FE;">
-          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Policy Definition</th>
           <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Provider Manual Definition</th>
+          <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Medicaid Update Definition</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def_html}</td>
           <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{provider_def_html}</td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def_html}</td>
         </tr>
       </tbody>
     </table>
@@ -322,15 +475,33 @@ def format_compare_tables(sections):
 
     references_html = ""
     if citation_order:
-        ref_items = "".join(
-            f"<li>[{i}] {html.escape(cite)}</li>" for i, cite in enumerate(citation_order, 1)
-        )
+        ref_items = []
+        for i, cite in enumerate(citation_order, 1):
+            base = cite.split("—", 1)[0].strip()
+            base_name = base.split(":", 1)[0].strip()
+            matched_doc = _match_doc_for_citation(cite)
+            effective_label = _effective_date_label(matched_doc) if matched_doc else _date_from_citation_text(cite)
+            display_cite = re.sub(r"\s*[-\u2013\u2014]\s*\d{4}-\d{2}-\d{2}\s*$", "", str(cite)).strip()
+            ref_items.append(
+                f"<li>[{i}] {html.escape(display_cite)}"
+                f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
+            )
         references_html = (
             "<b>References:</b>"
-            f"<ol style='margin-top:0.5rem; padding-left:1.4rem;'>{ref_items}</ol>"
+            f"<ol style='margin-top:0.5rem; padding-left:1.4rem;'>{''.join(ref_items)}</ol>"
         )
 
+    recency_summary = html.escape(_build_recency_summary(retrieved_docs_grouped))
+    recency_html = (
+        "<div style='margin-bottom:0.8rem; padding:10px 12px; background:#EEF6FF; "
+        "border:1px solid #CFE3FF; border-radius:8px;'>"
+        "<b>Most Up-To-Date Source Signal:</b> "
+        f"{recency_summary}"
+        "</div>"
+    )
+
     return f"""
+    {recency_html}
     <p style="font-weight:600; margin-bottom:0.5rem;">{headline}</p>
     <b>Definitions:</b>
     {table1}
@@ -409,9 +580,9 @@ for msg in st.session_state["compare_history"]:
 
         answer_body = text
         answer_body_is_html = False
-        # The first compare answer is rendered as custom HTML tables; follow-ups are plain markdown.
-        if (not is_followup) and compare_sections and not compare_sections.get("_parse_failed"):
-            answer_body = format_compare_tables(compare_sections)
+        # Render as custom HTML tables whenever valid compare_sections are available.
+        if compare_sections and not compare_sections.get("_parse_failed"):
+            answer_body = format_compare_tables(compare_sections, retrieved_docs_grouped=retrieved_docs_grouped)
             answer_body_is_html = True
 
         answer_body_html = answer_body if answer_body_is_html else markdown_to_html(answer_body)
@@ -421,8 +592,8 @@ for msg in st.session_state["compare_history"]:
         )
         has_sources = bool(retrieved_docs) or has_grouped_sources
 
-        if is_followup:
-            # Follow-ups intentionally mirror app.py so markdown bullets/bold render naturally.
+        if is_followup and not answer_body_is_html:
+            # Fallback: follow-ups without valid compare_sections render as plain markdown.
             st.markdown(
                 """
 <div class="chat-row assistant">
@@ -434,7 +605,6 @@ for msg in st.session_state["compare_history"]:
             st.markdown("**Answer:**")
             display_text = text.strip()
             display_text = re.sub(r"^answer\s*:?\s*", "", display_text, count=1, flags=re.IGNORECASE).strip()
-            # Normalize inline bullets so follow-up formatting matches app.py behavior.
             display_text = re.sub(r" \* ", "\n- ", display_text)
             display_text = re.sub(r"(?m)^\s*\*\s+", "- ", display_text)
             display_text = re.sub(r" \- (?=[A-Za-z0-9\"'])", "\n- ", display_text)
@@ -553,19 +723,13 @@ if not is_generating_compare:
             )
 
             if has_assistant_response:
-                col1, col2, col3 = st.columns([1, 1, 1])
-                with col1:
-                    submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
-                with col2:
-                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
-                with col3:
-                    cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
-            else:
                 col1, col2 = st.columns([1, 1])
                 with col1:
-                    submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
+                    followup_submitted = st.form_submit_button("↪️ Ask Follow-Up", use_container_width=True)
                 with col2:
                     cleared = st.form_submit_button("🧹 Clear", use_container_width=True)
+            else:
+                submitted = st.form_submit_button("🔍 Compare", use_container_width=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -618,37 +782,27 @@ if "compare_pending_query" in st.session_state:
         try:
             rag_pipeline = get_rag_pipeline_lazy()
             if rag_pipeline:
-                if pending_is_followup:
-                    # Follow-ups use the standard Q&A path so the model can use conversation context.
-                    history_for_llm = st.session_state["compare_history"]
-                    result = rag_pipeline.answer_question(pending_query, history=history_for_llm)
-                    answer = result.get("answer", "No answer returned.")
-                    evidence_dict = result.get("evidence_dict", {})
-                    retrieved_docs = result.get("retrieved_docs", [])
-                    retrieved_docs_grouped = {}
-                    followup_questions = result.get("followup_questions", [])
-                    compare_sections = {}
-                else:
-                    # The initial compare turn uses the dedicated compare endpoint and richer table output.
-                    result = rag_pipeline.answer_compare_definitions(
-                        pending_query,
-                        concept=pending_query,
-                    )
-                    answer = result.get("answer", "No answer returned.")
-                    evidence_dict = result.get("evidence_dict", {})
-                    retrieved_docs = result.get("retrieved_docs", [])
-                    retrieved_docs_grouped = {}
-                    followup_questions = result.get("followup_questions", [])
-                    compare_sections = result.get("compare_sections", {})
-                    if isinstance(retrieved_docs, dict):
-                        # Preserve the split source groups for the side-by-side retrieved source table.
-                        policy_docs = retrieved_docs.get("policy", []) or []
-                        provider_docs = retrieved_docs.get("provider_manual", []) or []
-                        retrieved_docs_grouped = {
-                            "policy": policy_docs,
-                            "provider_manual": provider_docs,
-                        }
-                        retrieved_docs = policy_docs + provider_docs
+                # Both initial compare and follow-ups use the compare endpoint
+                # so the response always renders as the side-by-side table format.
+                result = rag_pipeline.answer_compare_definitions(
+                    pending_query,
+                    concept=pending_query,
+                )
+                answer = result.get("answer", "No answer returned.")
+                evidence_dict = result.get("evidence_dict", {})
+                retrieved_docs = result.get("retrieved_docs", [])
+                retrieved_docs_grouped = {}
+                followup_questions = result.get("followup_questions", [])
+                compare_sections = result.get("compare_sections", {})
+                if isinstance(retrieved_docs, dict):
+                    # Preserve the split source groups for the side-by-side retrieved source table.
+                    policy_docs = retrieved_docs.get("policy", []) or []
+                    provider_docs = retrieved_docs.get("provider_manual", []) or []
+                    retrieved_docs_grouped = {
+                        "policy": policy_docs,
+                        "provider_manual": provider_docs,
+                    }
+                    retrieved_docs = policy_docs + provider_docs
             else:
                 answer = (
                     "Mock mode: Backend not connected.\n"
