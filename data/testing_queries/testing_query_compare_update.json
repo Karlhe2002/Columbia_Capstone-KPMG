@@ -1,0 +1,52 @@
+﻿{
+  "Test_query_compare_1": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_2": {
+    "question": "Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.",
+    "concept": "when a pharmacy must bill Medicaid before billing Medicare",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_3": {
+    "question": "For crossover claims, what are the requirements for prior approval after Medicaid payment?",
+    "concept": "crossover claims prior approval after Medicaid payment",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_4": {
+    "question": "Describe pharmacy responsibilities for coordination of benefits.",
+    "concept": "pharmacy responsibilities for coordination of benefits",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_5": {
+    "question": "Compare Medicaid policy versus provider manual for coinsurance, deductibles, and balance billing for dual eligible members.",
+    "concept": "coinsurance deductibles and balance billing for dual eligible members",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_6": {
+    "question": "How do Medicaid and provider manuals address Part D drug coverage exclusions and secondary coverage?",
+    "concept": "Part D drug coverage exclusions and secondary coverage",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_7": {
+    "question": "How are home infusion drugs covered, and who is responsible for billing",
+    "concept": "home infusion drugs coverage and billing responsibilities",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_8": {
+    "question": "For Part B, how should billing be handled for medical supplies or drugs related to DME?",
+    "concept": "Part B billing for medical supplies or drugs related to DME",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_9": {
+    "question": "If a drug is covered by Medicare but limited or excluded under Medicaid pharmacy benefits, how should it be billed?",
+    "concept": "billing when drug is covered by Medicare but limited or excluded under Medicaid pharmacy benefits",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_10": {
+    "question": "What responsibilities do pharmacists have when required patient or prescriber information is missing",
+    "concept": "pharmacist responsibilities when required patient or prescriber information is missing",
+    "task_type": "compare_definition"
+  }
+}

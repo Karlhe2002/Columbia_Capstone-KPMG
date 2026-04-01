@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -148,7 +148,7 @@ class RAGComparisonBatchTester:
 
     @staticmethod
     def _read_json(path: str) -> Dict[str, Any]:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
 
     @staticmethod
@@ -175,3 +175,5 @@ class RAGComparisonBatchTester:
 if __name__ == "__main__":
     tester = RAGComparisonBatchTester()
     tester.run()
+
+
