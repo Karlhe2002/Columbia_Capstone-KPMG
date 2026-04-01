@@ -16,7 +16,7 @@ api_providers:
     provider: "anthropic"
   
   gemini:
-    api_key: "AIzaSyAEJFjA8J5RvHcvKvyzcZpDcKYNhgjD2aI" 
+    api_key: "your-api-key" 
     base_url: "https://generativelanguage.googleapis.com"
     provider: "gemini"
 
@@ -27,7 +27,7 @@ api_providers:
   
 
 # Default API configuration
-default_provider: "deepseek"
+default_provider: "gemini"
 
 # Model configuration
 models:
