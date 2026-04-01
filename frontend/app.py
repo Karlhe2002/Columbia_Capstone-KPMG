@@ -89,7 +89,13 @@ def load_rag_pipeline():
     api_config_manager = APIConfigManager()
     api_config_default = api_config_manager.get_default_config()
     provider = (api_config_default.provider or "").lower()
-    model = "deepseek-chat" if provider == "deepseek" else "gemini-2.5-flash"
+    provider_to_model = {
+        "deepseek": "deepseek-chat",
+        "gemini": "gemini-2.5-flash",
+        # Use a widely available OpenAI-compatible fallback.
+        "openai": "gpt-4o-mini",
+    }
+    model = provider_to_model.get(provider, "deepseek-chat")
     llm_client = LLMClient(
         api_key=api_config_default.api_key,
         model=model,

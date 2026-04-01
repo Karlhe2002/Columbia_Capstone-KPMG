@@ -66,9 +66,12 @@ class ResponseGenerator:
             return "(No relevant chunks found.)"
         return "\n\n".join(
             [
-                f"[Document Title: {cls._get_doc_title(chunk)}] -[Chunk ID: {chunk['chunk_id']}]"
+                # "chunk_id" is an internal identifier; we include it for traceability
+                # but label it explicitly so the LLM does not treat it as a cite key.
+                f"[Document Title: {cls._get_doc_title(chunk)}]"
                 f"-[pages: {chunk['pages']}] - [Chunk Content: "
                 f"{cls._compact_text(chunk.get('text', '')) if compact_text else chunk.get('text', '')}]"
+                f" - [Internal Chunk ID (do not cite): {chunk.get('chunk_id', '')}]"
                 for chunk in chunks
             ]
         )
@@ -129,13 +132,14 @@ Context Chunks (authoritative; cite only these):
 {context}
 
 Chunks format:
-[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+[Document Title: <doc_title>] -[pages: <pages>] - [Chunk Content: <chunk_content>] - [Internal Chunk ID (do not cite): <chunk_id>]
 
 Output sections (exactly):
 - Answer
 - Evidence (quoted)
 - Caveats (if any)
 Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, YYYY].
+Do NOT cite chunk IDs. Citations must use Document Title (doc_title) + page (if available).
 If Caveats has no meaningful content, output exactly:
 Caveats
 None
@@ -244,7 +248,7 @@ Formatting requirements (strict):
         self,
         question: str,
         concept: Optional[str] = None,
-        top_k_per_source: int = 3,
+        top_k_per_source: int = 5,
         rerank_top_k: int = 20,
     ) -> Dict:
         """

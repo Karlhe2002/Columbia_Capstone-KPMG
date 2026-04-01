@@ -14,7 +14,8 @@ This is a healthcare RAG (Retrieval-Augmented Generation) system that analyzes N
 
 ```bash
 # Initial setup
-python -m venv .venv
+python -m venv .venv  # Windows
+python3 -m venv .venv # macOS/Linux
 .\.venv\Scripts\activate  # Windows
 source .venv/bin/activate  # macOS/Linux
 pip install -e .
@@ -48,7 +49,7 @@ python scripts/do_fix_size_chunking.py      # Fixed-size chunks
 python scripts/do_semantic_chunking.py      # Embedding-based chunking
 
 # 3. Ingest chunks into Neo4j graph
-python scripts/ingest_graph.py --chunk_dir data/chunks/asterisk_separate_chunking_result
+python scripts/ingest_graph.py --chunk_dir data/chunks/section_semantic_chunking_result
 
 # 4. Run web interface
 streamlit run frontend/app.py
