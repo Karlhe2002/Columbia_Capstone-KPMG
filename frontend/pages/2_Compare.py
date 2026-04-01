@@ -715,7 +715,7 @@ if not is_generating_compare:
         with st.form("compare_form", clear_on_submit=True):
             user_query = st.text_input(
                 "🔎 **Compare a Concept:**",
-                placeholder="e.g. Define 'medical necessity' in policy vs provider manual.",
+                placeholder="e.g. How should providers bill managed care organizations for pharmacy claims today?",
             )
 
             has_assistant_response = any(
