@@ -64,6 +64,18 @@ class APIConfigManager:
         return list(self._config.get("models", {}).keys())
 
 
+def get_default_model_for_provider(provider: str) -> str:
+    """Map a provider type to a sensible default model."""
+    provider = (provider or "").lower()
+    provider_to_model = {
+        "openai": "gpt-5",
+        "deepseek": "deepseek-chat",
+        "gemini": "gemini-2.5-flash",
+        "ollama": "llama3.2:3b",
+    }
+    return provider_to_model.get(provider, "gpt-5")
+
+
 def load_api_config(config_path: str = "configs/api_config.yaml") -> Dict[str, Any]:
     """
     Convenience function to load API config as dictionary.

@@ -174,6 +174,54 @@ class ResponseGenerator:
             ]
         )
 
+    @staticmethod
+    def _clean_compare_concept(value: str) -> str:
+        value = " ".join((value or "").split()).strip()
+        value = re.sub(r"^[\"'`“”‘’]+|[\"'`“”‘’]+$", "", value).strip()
+        value = re.sub(r"^[\s:;,\-]+|[\s:;,\-?.!]+$", "", value).strip()
+        return value
+
+    @classmethod
+    def _resolve_compare_concept(cls, question: str, concept: Optional[str] = None) -> str:
+        raw = (concept or question or "").strip()
+        if not raw:
+            return ""
+
+        # Prefer explicitly quoted target concepts, e.g. Define 'medical necessity'...
+        quoted_match = re.search(r"[\"'`“”‘’]([^\"'`“”‘’]{2,160})[\"'`“”‘’]", raw)
+        if quoted_match:
+            quoted_value = cls._clean_compare_concept(quoted_match.group(1))
+            if quoted_value:
+                return quoted_value
+
+        candidate = " ".join(raw.split()).strip()
+        candidate = re.sub(
+            r"^(define|explain|describe|compare|contrast|summarize|tell me about)\s+",
+            "",
+            candidate,
+            flags=re.IGNORECASE,
+        )
+        candidate = re.sub(
+            r"^(what is|what's|how is|how do you define)\s+",
+            "",
+            candidate,
+            flags=re.IGNORECASE,
+        )
+        candidate = re.sub(
+            r"\s+(in|across|between|for)\s+policy\s+(vs\.?|versus|and)\s+provider\s+manual\.?$",
+            "",
+            candidate,
+            flags=re.IGNORECASE,
+        )
+        candidate = re.sub(
+            r"\s+in\s+(policy|provider manual)\s+documents?\.?$",
+            "",
+            candidate,
+            flags=re.IGNORECASE,
+        )
+        candidate = cls._clean_compare_concept(candidate)
+        return candidate or cls._clean_compare_concept(raw)
+
     def answer_question(self, question: str, top_k: int = 8, rerank_top_k: int = 30, history: Optional[List[Dict]] = None) -> Dict:
         """
         Full question-answering pipeline.
@@ -187,8 +235,11 @@ class ResponseGenerator:
 
         # 0. Smart filter
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
+        retrieval_query = (filters.get("retrieval_query") or question).strip()
+        rerank_query = (filters.get("normalized_query") or question).strip()
 
         # 1. Encode query as vector
+        # Keep retrieval stable while we iterate on query understanding.
         query_vec = self._get_embedder().encode([question])["dense_vecs"][0].tolist()
         
         # 2. Retrieve more chunks initially (for reranking)
@@ -294,6 +345,11 @@ Formatting requirements (strict):
             "answer": llm_response,
             "retrieved_docs": final_chunks,
             "followup_questions": followup_questions,
+            "query_understanding": {
+                "retrieval_query": retrieval_query,
+                "normalized_query": rerank_query,
+                "filters": filters,
+            },
         }
 
     def _generate_followup_questions(
@@ -399,8 +455,11 @@ Formatting requirements (strict):
         self.chat_history.add("user", question)
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
 
-        retrieval_query = concept.strip() if concept and concept.strip() else question
-        query_vec = self._get_embedder().encode([retrieval_query])["dense_vecs"][0].tolist()
+        resolved_concept = self._resolve_compare_concept(question, concept)
+        default_query = resolved_concept or question
+        retrieval_query = (filters.get("retrieval_query") or default_query).strip()
+        rerank_query = (filters.get("normalized_query") or question).strip()
+        query_vec = self._get_embedder().encode([default_query])["dense_vecs"][0].tolist()
         initial_k = rerank_top_k if self.use_reranker else top_k_per_source
 
         base_filters = {
@@ -454,7 +513,7 @@ Formatting requirements (strict):
         policy_context = self._format_chunks(policy_final, compact_text=True)
         provider_context = self._format_chunks(provider_manual_final, compact_text=True)
         recency_brief = self._build_compare_recency_brief(policy_final, provider_manual_final)
-        target_concept = concept if concept and concept.strip() else "the requested concept"
+        target_concept = resolved_concept or "the requested concept"
 
         user_msg = f"""
 Question:
@@ -529,10 +588,15 @@ Internal decision process:
 
         return {
             "question": question,
-            "concept": concept,
+            "concept": resolved_concept or concept,
             "answer": llm_response,
             "compare_sections": compare_sections,
             "followup_questions": followup_questions,
+            "query_understanding": {
+                "retrieval_query": retrieval_query,
+                "normalized_query": rerank_query,
+                "filters": filters,
+            },
             "retrieved_docs": {
                 "policy": policy_final,
                 "provider_manual": provider_manual_final,
