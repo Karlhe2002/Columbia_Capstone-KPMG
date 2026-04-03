@@ -1,10 +1,68 @@
 from datetime import datetime, date
+import re
 from typing import Optional, Union, Iterable, List, Dict, Any
 
 import pandas as pd  # kept because it's used in the __main__ block
 
 from healthcare_rag_llm.graph_builder.neo4j_loader import Neo4jConnector
 from healthcare_rag_llm.embedding.HealthcareEmbedding import HealthcareEmbedding
+
+
+def _normalize_keywords(keywords, max_items: int = 12) -> List[str]:
+    if not keywords:
+        return []
+    out = []
+    seen = set()
+    for raw in keywords:
+        cleaned = " ".join(str(raw or "").strip().lower().split())
+        if len(cleaned) < 2 or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        out.append(cleaned)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def _keyword_signal(result: Dict[str, Any], keywords: List[str]) -> Dict[str, float]:
+    text = " ".join(str(result.get("text", "")).lower().split())
+    title = " ".join(str(result.get("title", "")).lower().split())
+    doc_type = " ".join(str(result.get("doc_type", "")).lower().split())
+    authority = " ".join(str(result.get("authority", "")).lower().split())
+
+    keyword_hits = 0
+    keyword_score = 0.0
+
+    for keyword in keywords:
+        if " " in keyword:
+            text_hit = keyword in text
+            title_hit = keyword in title
+            doc_type_hit = keyword in doc_type
+            authority_hit = keyword in authority
+        else:
+            pattern = r"\b" + re.escape(keyword) + r"\b"
+            text_hit = bool(re.search(pattern, text))
+            title_hit = bool(re.search(pattern, title))
+            doc_type_hit = bool(re.search(pattern, doc_type))
+            authority_hit = bool(re.search(pattern, authority))
+
+        if not any((text_hit, title_hit, doc_type_hit, authority_hit)):
+            continue
+
+        keyword_hits += 1
+        if text_hit:
+            keyword_score += 0.08
+        if title_hit:
+            keyword_score += 0.12
+        if doc_type_hit:
+            keyword_score += 0.15
+        if authority_hit:
+            keyword_score += 0.10
+
+    return {
+        "keyword_hits": float(keyword_hits),
+        "keyword_score": float(keyword_score),
+    }
 
 
 def _normalize_date_filter(
@@ -64,7 +122,7 @@ def query_chunks(
     doc_classes: Optional[Iterable[str]] = None,
     min_effective_date: Optional[Union[str, datetime, date]] = None,
     max_effective_date: Optional[Union[str, datetime, date]] = None,
-    keywords=None,  # currently unused, kept for interface compatibility
+    keywords=None,
 ) -> List[Dict[str, Any]]:
     """
     Perform a vector search over Chunk.denseEmbedding via the 'chunk_vec' index,
@@ -204,7 +262,24 @@ def query_chunks(
     finally:
         connector.close()
 
-    return data
+    normalized_keywords = _normalize_keywords(keywords)
+    if normalized_keywords:
+        for row in data:
+            vector_score = float(row.get("score", 0.0) or 0.0)
+            signal = _keyword_signal(row, normalized_keywords)
+            row["vector_score"] = vector_score
+            row["keyword_hits"] = int(signal["keyword_hits"])
+            row["keyword_score"] = signal["keyword_score"]
+            row["score"] = vector_score + signal["keyword_score"]
+        data.sort(
+            key=lambda row: (
+                float(row.get("score", 0.0) or 0.0),
+                int(row.get("keyword_hits", 0) or 0),
+            ),
+            reverse=True,
+        )
+
+    return data[:top_k]
 
 
 def check_match_page_level(

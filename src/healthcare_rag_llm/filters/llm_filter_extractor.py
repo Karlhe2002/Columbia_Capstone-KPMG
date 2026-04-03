@@ -16,6 +16,16 @@ MONTHS = {
     "sep": 9, "oct": 10, "nov": 11, "dec": 12,
 }
 
+THEME_SLOTS = (
+    "actions",
+    "actors",
+    "organizations",
+    "domains",
+    "objects",
+    "intent",
+    "temporal_cues",
+)
+
 QUERY_UNDERSTANDING_SYSTEM_PROMPT = (
     "You are a query-understanding component for a healthcare policy RAG system.\n"
     "Your job is to transform a user's natural-language question into a compact retrieval plan.\n"
@@ -23,6 +33,8 @@ QUERY_UNDERSTANDING_SYSTEM_PROMPT = (
     "Return ONLY a JSON object with exactly these fields:\n"
     "- \"normalized_query\": concise rewrite optimized for retrieval\n"
     "- \"semantic_keywords\": array of short domain terms or synonyms\n"
+    "- \"themes\": object containing arrays for actions, actors, organizations, domains, objects, intent, and temporal_cues\n"
+    "- \"search_themes\": array of short retrieval-friendly keywords or phrases derived from the question themes\n"
     "- \"doc_types\": array of allowed document types from the provided candidate list\n"
     "- \"min_publish_date\": YYYY-MM-DD or null\n"
     "- \"max_publish_date\": YYYY-MM-DD or null\n"
@@ -32,10 +44,15 @@ QUERY_UNDERSTANDING_SYSTEM_PROMPT = (
     "- Preserve the user's meaning; do not answer the question.\n"
     "- Expand acronyms and shorthand when useful for retrieval.\n"
     "- Prefer specific healthcare-policy terms over conversational phrasing.\n"
+    "- Keep doc_types and date bounds as structured fields; do not hide them inside themes.\n"
+    "- Themes should capture the main concepts in the question, using short phrases.\n"
+    "- Use temporal_cues only for raw time wording like 'today', 'current', or 'during covid'; keep date bounds in the date fields.\n"
+    "- search_themes should be useful for later keyword search and may include abbreviations, expansions, and short noun phrases.\n"
     "- Only return doc types from the provided allowed list.\n"
     "- Do not invent exact document titles or authorities unless they are present in the question or hints.\n"
     "- If no useful rewrite is needed, set normalized_query to the original question.\n"
     "- If no semantic keywords are helpful, return an empty array.\n"
+    "- If no themes are helpful, return empty arrays for each theme slot and an empty search_themes array.\n"
     "- If no date bounds are implied, set both dates to null.\n"
     "- Use \"current\" when the user asks about latest/current/in effect guidance.\n"
     "- Use \"historical\" when the user clearly asks about a past period or changes over time.\n"
@@ -56,6 +73,16 @@ QUERY_UNDERSTANDING_USER_PROMPT = (
     "{{\n"
     "  \"normalized_query\": \"...\",\n"
     "  \"semantic_keywords\": [\"...\"],\n"
+    "  \"themes\": {{\n"
+    "    \"actions\": [\"...\"],\n"
+    "    \"actors\": [\"...\"],\n"
+    "    \"organizations\": [\"...\"],\n"
+    "    \"domains\": [\"...\"],\n"
+    "    \"objects\": [\"...\"],\n"
+    "    \"intent\": [\"...\"],\n"
+    "    \"temporal_cues\": [\"...\"]\n"
+    "  }},\n"
+    "  \"search_themes\": [\"...\"],\n"
     "  \"doc_types\": [\"...\"],\n"
     "  \"min_publish_date\": \"YYYY-MM-DD\" or null,\n"
     "  \"max_publish_date\": \"YYYY-MM-DD\" or null,\n"
@@ -213,6 +240,21 @@ class LLMFilterExtractor:
         return _dedupe_preserve_order(out)
 
     @staticmethod
+    def _normalize_themes(value: Any, max_items_per_slot: int = 6) -> Dict[str, List[str]]:
+        if not isinstance(value, dict):
+            return {}
+
+        out: Dict[str, List[str]] = {}
+        for slot in THEME_SLOTS:
+            normalized = LLMFilterExtractor._normalize_string_list(
+                value.get(slot),
+                max_items=max_items_per_slot,
+            )
+            if normalized:
+                out[slot] = normalized
+        return out
+
+    @staticmethod
     def _normalize_temporal_focus(value: Any) -> str:
         value = str(value or "").strip().lower()
         if value in {"current", "historical", "unspecified"}:
@@ -285,9 +327,25 @@ class LLMFilterExtractor:
         if not parsed:
             return {}
 
+        themes = self._normalize_themes(parsed.get("themes"))
+        semantic_keywords = self._normalize_string_list(parsed.get("semantic_keywords"))
+
+        derived_search_themes = []
+        for slot in THEME_SLOTS:
+            derived_search_themes.extend(themes.get(slot, []))
+
+        search_themes = _dedupe_preserve_order(
+            self._normalize_string_list(parsed.get("search_themes"), max_items=12)
+            + semantic_keywords
+            + derived_search_themes
+            + self._normalize_string_list(rule_filters.get("keywords"), max_items=12)
+        )
+
         return {
             "normalized_query": str(parsed.get("normalized_query", "")).strip(),
-            "semantic_keywords": self._normalize_string_list(parsed.get("semantic_keywords")),
+            "semantic_keywords": semantic_keywords,
+            "themes": themes,
+            "search_themes": search_themes,
             "doc_types": self._normalize_string_list(parsed.get("doc_types"), allowed_values=set(self.doc_types)),
             "min_effective_date": self._normalize_date(parsed.get("min_publish_date")),
             "max_effective_date": self._normalize_date(parsed.get("max_publish_date")),
@@ -319,6 +377,8 @@ class LLMFilterExtractor:
 
         filters["normalized_query"] = llm_plan.get("normalized_query") or query.strip()
         filters["semantic_keywords"] = llm_plan.get("semantic_keywords") or []
+        filters["themes"] = llm_plan.get("themes") or {}
+        filters["search_themes"] = llm_plan.get("search_themes") or []
         filters["suggested_doc_types"] = llm_plan.get("doc_types") or []
         filters["temporal_focus"] = llm_plan.get("temporal_focus") or "unspecified"
         filters["retrieval_query"] = self._build_retrieval_query(query, filters, llm_plan)

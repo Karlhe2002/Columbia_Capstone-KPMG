@@ -39,6 +39,38 @@ _JSON_KEYS = [
     "chunk5", "chunk5string",
 ]
 
+
+def _dedupe_terms(values: List[str], max_items: int = 12) -> List[str]:
+    out = []
+    seen = set()
+    for value in values or []:
+        cleaned = " ".join(str(value or "").strip().split())
+        if not cleaned:
+            continue
+        lowered = cleaned.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        out.append(cleaned)
+        if len(out) >= max_items:
+            break
+    return out
+
+
+def _build_keyword_hints(filters: Dict[str, Any]) -> List[str]:
+    return _dedupe_terms(
+        list(filters.get("keywords") or [])
+        + list(filters.get("search_themes") or [])
+        + list(filters.get("semantic_keywords") or [])
+    )
+
+
+def _build_rerank_query(base_query: str, filters: Dict[str, Any]) -> str:
+    keyword_hints = _build_keyword_hints(filters)
+    if not keyword_hints:
+        return base_query
+    return f"{base_query}\nKey themes: {', '.join(keyword_hints[:8])}"
+
 def _validate_json_payload(data: Any) -> bool:
     """
     Validate the strict shape:
@@ -391,6 +423,9 @@ class ResponseGenerator:
 
         # Smart filter (match response_generator.py behavior)
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
+        normalized_query = (filters.get("normalized_query") or question).strip()
+        rerank_query = _build_rerank_query(normalized_query, filters)
+        keyword_hints = _build_keyword_hints(filters)
 
         # 1) Encode query
         query_vec = self.embedder.encode([question])["dense_vecs"][0].tolist()
@@ -405,13 +440,13 @@ class ResponseGenerator:
             doc_types=filters.get("doc_types"),
             min_effective_date=filters.get("min_effective_date"),
             max_effective_date=filters.get("max_effective_date"),
-            keywords=filters.get("keywords"),
+            keywords=keyword_hints,
         )
 
         # 3) Rerank
         if self.use_reranker and retrieved_chunks:
             retrieved_chunks = apply_rerank_to_chunks(
-                query=question,
+                query=rerank_query,
                 chunks=retrieved_chunks,
                 combine_with_dense=True,
                 alpha=0.3,
