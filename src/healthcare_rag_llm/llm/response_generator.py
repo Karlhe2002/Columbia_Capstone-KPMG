@@ -62,6 +62,123 @@ class ResponseGenerator:
         return cleaned[:max_chars].rstrip() + " ..."
 
     @staticmethod
+    def _trim_incomplete_trailing_text(text: str) -> str:
+        # If a chunk ends mid-sentence, trim back to the last complete sentence so the model
+        # does not quote visibly broken fragments.
+        raw = str(text or "")
+        if not raw.strip():
+            return ""
+        stripped = raw.rstrip()
+        if stripped[-1] in ".!?)]}\"'":
+            return stripped
+
+        sentence_matches = list(re.finditer(r"[.!?](?=\s|$)", stripped))
+        if not sentence_matches:
+            return stripped
+
+        cut_idx = sentence_matches[-1].end()
+        candidate = stripped[:cut_idx].rstrip()
+        if len(candidate) >= max(int(len(stripped) * 0.6), 80):
+            return candidate
+        return stripped
+
+    @staticmethod
+    def _sanitize_compare_text_field(text: str) -> str:
+        # Clean up compare output text so obviously broken evidence fragments do not reach the UI.
+        # This is intentionally pattern-based rather than tied to one phrase, so it can catch
+        # many kinds of chunk-edge damage such as chopped quotes, dangling connectors, or
+        # incomplete tail words.
+        cleaned = " ".join(str(text or "").split()).strip()
+        if not cleaned:
+            return ""
+
+        cleaned = (
+            cleaned
+            .replace("â€”", "—")
+            .replace("Ã¢â‚¬â€", "—")
+            .replace("â€œ", '"')
+            .replace("â€", '"')
+            .replace("â€˜", "'")
+            .replace("â€™", "'")
+        )
+
+        def _strip_incomplete_quoted_tails(value: str) -> str:
+            # If a quoted fragment ends with a suspicious chopped tail, keep the sentence but
+            # remove the broken quote wrapper so it reads like a paraphrase instead of a fragment.
+            pattern = r"'([^'\n]{8,}?)'(?=\s*(?:\[\d+\])?[.,;:]?\s*$)"
+
+            def _replace(match):
+                inner = match.group(1).strip()
+                if not inner:
+                    return ""
+                if re.search(r"\b(?:and|or|to|for|with|of|in|on|by|the|this|that|these|those)$", inner, re.I):
+                    return inner
+                if re.search(r"\b[A-Z]$", inner):
+                    return inner
+                if re.search(r"[A-Za-z]{1,4}$", inner) and not re.search(r"[.!?]$", inner):
+                    return inner
+                return match.group(0)
+
+            return re.sub(pattern, _replace, value)
+
+        def _trim_broken_tail(value: str) -> str:
+            # Trim abrupt endings like a single capital letter, a dangling connector, or a very
+            # short unfinished word at the end of the field.
+            if not value:
+                return value
+
+            broken_tail_patterns = [
+                r"\s+[A-Z](?=\s*(?:\[\d+\])?[.,;:]?\s*$)",  # e.g. "Managed C"
+                r"\b(?:and|or|to|for|with|of|in|on|by|the|this|that|these|those)(?=\s*(?:\[\d+\])?[.,;:]?\s*$)",
+                r"[A-Za-z]{1,4}(?=\s*(?:\[\d+\])?[.,;:]?\s*$)",
+            ]
+
+            trimmed = value
+            for pattern in broken_tail_patterns:
+                candidate = re.sub(pattern, "", trimmed).rstrip()
+                if candidate != trimmed and len(candidate) >= max(30, int(len(trimmed) * 0.6)):
+                    trimmed = candidate
+                    break
+            return trimmed
+
+        def _trim_to_last_safe_boundary(value: str) -> str:
+            # If the field still looks damaged, fall back to the last clean sentence/phrase boundary.
+            if not value:
+                return value
+            if re.search(r"[.!?](?:\s*(?:\[\d+\])?[\"')\]]*)?\s*$", value):
+                return value
+
+            boundary_matches = list(re.finditer(r"[.!?;:](?=\s|$)", value))
+            if boundary_matches:
+                candidate = value[:boundary_matches[-1].end()].rstrip()
+                if len(candidate) >= max(30, int(len(value) * 0.6)):
+                    return candidate
+
+            comma_matches = list(re.finditer(r",(?=\s)", value))
+            if comma_matches:
+                candidate = value[:comma_matches[-1].start()].rstrip()
+                if len(candidate) >= max(30, int(len(value) * 0.7)):
+                    return candidate
+            return value
+
+        cleaned = _strip_incomplete_quoted_tails(cleaned)
+        cleaned = _trim_broken_tail(cleaned)
+        cleaned = _trim_to_last_safe_boundary(cleaned)
+
+        # Balance dangling quotes/parentheses created by model paraphrasing.
+        if cleaned.count('"') % 2 == 1:
+            cleaned = cleaned.replace('"', "")
+        if cleaned.count("'") % 2 == 1 and "'" not in re.sub(r"[A-Za-z]+'[A-Za-z]+", "", cleaned):
+            cleaned = cleaned.replace("'", "")
+        if cleaned.count("(") > cleaned.count(")"):
+            cleaned = cleaned + (")" * (cleaned.count("(") - cleaned.count(")")))
+        elif cleaned.count(")") > cleaned.count("("):
+            excess = cleaned.count(")") - cleaned.count("(")
+            cleaned = cleaned[::-1].replace(")", "", excess)[::-1]
+
+        return cleaned.strip()
+
+    @staticmethod
     def _dedupe_terms(values: List[str], max_items: int = 12) -> List[str]:
         out = []
         seen = set()
@@ -193,6 +310,15 @@ class ResponseGenerator:
         return "\n".join(lines)
 
     @classmethod
+    def _sort_chunks_newest_first(cls, chunks: List[Dict]) -> List[Dict]:
+        # For compare mode, show the freshest evidence first so the model sees the desired ordering directly.
+        def _sort_key(chunk: Dict):
+            parsed = cls._parse_effective_date(chunk.get("effective_date"))
+            return (parsed is not None, parsed or date.min)
+
+        return sorted(chunks or [], key=_sort_key, reverse=True)
+
+    @classmethod
     def _format_chunks(cls, chunks: List[Dict], compact_text: bool = False) -> str:
         if not chunks:
             return "(No relevant chunks found.)"
@@ -201,7 +327,7 @@ class ResponseGenerator:
                 f"[Document Title: {cls._get_doc_title(chunk)}] -[Chunk ID: {chunk['chunk_id']}]"
                 f"-[Effective Date: {chunk.get('effective_date') or 'N/A'}]"
                 f"-[pages: {chunk['pages']}] - [Chunk Content: "
-                f"{cls._compact_text(chunk.get('text', '')) if compact_text else chunk.get('text', '')}]"
+                f"{cls._compact_text(cls._trim_incomplete_trailing_text(chunk.get('text', ''))) if compact_text else cls._trim_incomplete_trailing_text(chunk.get('text', ''))}]"
                 for chunk in chunks
             ]
         )
@@ -578,9 +704,12 @@ Formatting requirements (strict):
         if cancel_check and cancel_check():
             raise GenerationCancelled()
 
-        policy_context = self._format_chunks(policy_final, compact_text=True)
-        provider_context = self._format_chunks(provider_manual_final, compact_text=True)
-        recency_brief = self._build_compare_recency_brief(policy_final, provider_manual_final)
+        policy_ordered = self._sort_chunks_newest_first(policy_final)
+        provider_manual_ordered = self._sort_chunks_newest_first(provider_manual_final)
+        # For compare mode, keep chunk text intact so the model does not see chopped evidence mid-sentence.
+        policy_context = self._format_chunks(policy_ordered, compact_text=False)
+        provider_context = self._format_chunks(provider_manual_ordered, compact_text=False)
+        recency_brief = self._build_compare_recency_brief(policy_ordered, provider_manual_ordered)
         target_concept = resolved_concept or "the requested concept"
 
         user_msg = f"""
@@ -605,14 +734,18 @@ Use the provided Effective Date metadata to determine which grounded source is m
 Output as a valid JSON object with exactly these keys:
 {{
   "headline_summary": "1-2 sentence summary comparing both sources and clearly surfacing which source is more recent when supported by dates",
-  "policy_definition": "Policy definition with inline citations [doc_title:page - date]",
-  "provider_manual_definition": "Provider manual definition with inline citations",
+  "aligned_pairs": [
+    {{"provider_manual": "Provider-manual bullet 1 with inline citations", "policy_update": "Policy bullet 1 that responds to the same sub-topic with inline citations [doc_title:page - date]"}},
+    {{"provider_manual": "Provider-manual bullet 2", "policy_update": "Policy bullet 2"}}
+  ],
   "similarities": ["similarity point 1 with citation", "similarity point 2"],
   "differences": ["difference point 1 with citation", "difference point 2"],
   "caveats": "Any caveats, or null if none"
 }}
 Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
 Each field must have inline citations like [doc_title or doc_title:page — Mon DD, YYYY].
+Use one date format everywhere in the output: Mon DD, YYYY.
+If source metadata appears as YYYY-MM-DD, convert it to Mon DD, YYYY before writing the answer.
 Comparison requirements:
 - In "headline_summary", answer the user's question directly and make the recency conclusion explicit.
 - Use clear wording such as "According to the newest policy source dated ..." or "According to the newest provider manual source dated ...".
@@ -622,14 +755,71 @@ Comparison requirements:
 - If the provider manual is more recent, say so in the headline summary and explain that it should receive more weight by default.
 - If policy is more recent, say so in the headline summary and explain that it should receive more weight by default.
 - If dates are missing or unclear, say that explicitly instead of guessing.
+- Never output chopped or partial-looking evidence fragments; if the support is incomplete, describe it as partial rather than ending mid-phrase.
 - If the user explicitly asks about a historical period, honor that instead of defaulting to the newest source.
-- If either side has insufficient evidence, state that explicitly in the relevant field.
+- Do not use "insufficient evidence" as a default fallback when a weaker but still grounded source-based statement is possible.
+- "aligned_pairs" must be an array of row-by-row comparison objects, not two independent lists.
+- Return at least 2 aligned rows whenever the retrieved evidence supports 2 or more distinct grounded points.
+- Usually return 3 to 4 aligned rows, not more, unless the evidence clearly requires an extra row.
+- Do not collapse multiple grounded points into one long row if they can be separated into shorter rows.
+- The provider manual side is the anchor for the row structure.
+- Only create a row when the provider manual side has a real grounded point to anchor that row.
+- If a provider-manual candidate is too weak, indirect, or generic to stand on its own, skip that row instead of writing "insufficient evidence" on the left.
+- Row 1 must start from the newest relevant provider-manual source.
+- Later rows may move to the next most relevant grounded provider-manual sources in descending recency/relevance order.
+- For each row, "policy_update" must respond to the same sub-topic as "provider_manual".
+- Do NOT make the policy side simply a newest-to-oldest policy list.
+- Do not introduce a new policy topic in a row unless it directly responds to the provider-manual text in that same row.
+- If the newest provider-manual source is too general or insufficient to answer fully, say that in row 1 and then use later rows for the next most relevant grounded provider-manual evidence.
+- If there is no closely matching policy evidence for a given provider-manual row, say that explicitly in "policy_update" for that same row.
+- Keep each row concise and source-based: one provider-manual point paired with one policy response point.
+- Each row must cover exactly one grounded sub-topic.
+- Each side of a row should usually be 1 sentence and should not exceed 2 sentences.
+- Prefer several short rows over one long row.
+- Do not write paragraph-style bullets.
+- If one row starts listing multiple operational rules, split them into separate rows when grounded evidence allows.
+- Prioritize rows that directly answer the user's question about current billing guidance.
+- Do not create filler rows for marginal side topics just because they appear in the retrieved chunks.
+- Skip low-value rows that are only weakly related to the user's question.
+- If there are many possible rows, keep only the strongest and most relevant 3 to 4 rows.
+- For the provider_manual field, prefer a concise partial grounded statement over "insufficient evidence" whenever any meaningful provider-manual guidance can be extracted.
+- Use "insufficient evidence" in provider_manual only if there is truly no meaningful provider-manual point available for the entire comparison.
+- For the policy_update field, prefer a partial grounded response over "insufficient evidence" whenever any matching policy guidance exists.
+- Only say "insufficient evidence" when the retrieved chunks truly do not support a meaningful grounded statement for that side of that row.
+- If the evidence is partial, limited, or indirect, say that it is partial/limited/indirect and then give the grounded analysis that is still possible.
+- Do not create a row whose main purpose is only to say "insufficient evidence" if stronger rows already answer the user's question.
+- Use an "insufficient evidence" row only when that gap is important to the user's question and there is no stronger grounded row to show instead.
+- If a row would be "insufficient evidence" on the provider-manual side but there are other stronger provider-manual rows available, drop that row.
+- Strict ordering rule: always start each field with the newest relevant evidence for that source type.
+- Strict ordering rule: do not lead with older evidence when newer evidence exists for the same point.
+- Strict ordering rule: mention older evidence only after the newest evidence has already been stated.
+- Strict ordering rule: if older and newer evidence conflict, lead with the newer evidence and frame the older evidence as background or superseded context.
 Internal decision process:
-- Identify the newest relevant policy chunk by Effective Date.
 - Identify the newest relevant provider manual chunk by Effective Date.
-- Compare those newest sources first.
-- In "policy_definition", lead with the newest policy evidence.
-- In "provider_manual_definition", lead with the newest provider manual evidence.
+- Build the aligned rows from the provider-manual side first, starting from the newest relevant provider-manual source.
+- For each provider-manual row, find the policy chunk or policy chunks that most directly address the same sub-point, even if that policy evidence is older than the newest policy chunk overall.
+- Only use the newest policy chunk first when it is also the most relevant match for that provider-manual row.
+- Before writing the final JSON, break the provider-manual evidence into a short ordered list of distinct sub-topics.
+- Then create one aligned row per sub-topic.
+- If an aligned row grows beyond 2 sentences on either side, split it into multiple rows.
+- Rank candidate rows by direct usefulness for answering the user's actual question.
+- Keep the most relevant rows and discard weak or repetitive candidates.
+- Remove candidate rows whose provider-manual side is too generic, too weak, or would mainly say "insufficient evidence".
+- Prefer a grounded partial comparison over an "insufficient evidence" statement whenever at least one meaningful grounded point can be made.
+- In row 1, "provider_manual" must lead with the newest provider-manual evidence.
+- In row 1, "policy_update" must be the policy evidence that best matches provider-manual row 1, not automatically the newest policy evidence overall.
+- After drafting the rows, verify row by row that "provider_manual" and "policy_update" discuss the same sub-topic.
+- If a policy row does not match the provider-manual row in the same position, rewrite it or replace it with an explicit "no closely matching policy evidence" statement.
+- Final self-check before returning JSON:
+- Does each row represent only one sub-topic?
+- Are there any rows that should be split because they contain multiple distinct policy or billing rules?
+- Are there too many rows?
+- Are any rows weak, repetitive, or only loosely relevant to the user's question?
+- Does any left-side row mainly say "insufficient evidence" even though another concrete provider-manual row could be shown instead?
+- If yes, delete that weak left-side row.
+- If yes, remove those rows and keep the strongest 3 to 4.
+- If yes, split them before returning the JSON.
+- In "headline_summary", the first cited evidence must come from the newest source type overall when that can be determined.
 - Use older evidence only as background or to explain differences.
 """.strip()
 
@@ -680,13 +870,56 @@ Internal decision process:
                 "headline_summary": llm_response,
                 "policy_definition": "",
                 "provider_manual_definition": "",
+                "aligned_pairs": [],
                 "similarities": [],
                 "differences": [],
                 "caveats": None,
                 "_parse_failed": True,
             }
-        for key in ("similarities", "differences"):
+        aligned_pairs = parsed.get("aligned_pairs", [])
+        if isinstance(aligned_pairs, dict):
+            parsed["aligned_pairs"] = [aligned_pairs]
+        elif isinstance(aligned_pairs, list):
+            normalized_pairs = []
+            for item in aligned_pairs:
+                if not isinstance(item, dict):
+                    continue
+                normalized_pairs.append(
+                    {
+                        "provider_manual": ResponseGenerator._sanitize_compare_text_field(item.get("provider_manual", "")),
+                        "policy_update": ResponseGenerator._sanitize_compare_text_field(item.get("policy_update", "")),
+                    }
+                )
+            parsed["aligned_pairs"] = normalized_pairs
+        else:
+            parsed["aligned_pairs"] = []
+
+        parsed["headline_summary"] = ResponseGenerator._sanitize_compare_text_field(
+            parsed.get("headline_summary", "")
+        )
+        caveat_value = parsed.get("caveats")
+        if caveat_value is not None:
+            parsed["caveats"] = ResponseGenerator._sanitize_compare_text_field(caveat_value)
+
+        for key in ("policy_definition", "provider_manual_definition", "similarities", "differences"):
             val = parsed.get(key, [])
             if isinstance(val, str):
                 parsed[key] = [val] if val else []
+            parsed[key] = [
+                ResponseGenerator._sanitize_compare_text_field(item)
+                for item in parsed.get(key, [])
+                if ResponseGenerator._sanitize_compare_text_field(item)
+            ]
+
+        if not parsed.get("aligned_pairs"):
+            provider_items = parsed.get("provider_manual_definition", [])
+            policy_items = parsed.get("policy_definition", [])
+            max_len = max(len(provider_items), len(policy_items), 0)
+            parsed["aligned_pairs"] = [
+                {
+                    "provider_manual": provider_items[i] if i < len(provider_items) else "",
+                    "policy_update": policy_items[i] if i < len(policy_items) else "",
+                }
+                for i in range(max_len)
+            ]
         return parsed

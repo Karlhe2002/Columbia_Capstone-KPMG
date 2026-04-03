@@ -558,8 +558,9 @@ def _build_recency_summary(retrieved_docs_grouped):
 def format_compare_tables(sections, retrieved_docs_grouped=None):
     """Render compare definitions result as headline + 2 HTML tables + caveats."""
     headline = html.escape(sections.get("headline_summary", ""))
-    policy_def = sections.get("policy_definition", "N/A")
-    provider_def = sections.get("provider_manual_definition", "N/A")
+    aligned_pairs = sections.get("aligned_pairs", []) or []
+    policy_def = sections.get("policy_definition", [])
+    provider_def = sections.get("provider_manual_definition", [])
     similarities = sections.get("similarities", [])
     differences = sections.get("differences", [])
     caveats = sections.get("caveats")
@@ -647,8 +648,50 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
         normalized = re.sub(r"\s{2,}", " ", normalized).strip()
         return html.escape(normalized)
 
-    policy_def_html = _normalize_text_with_inline_numbers(policy_def)
-    provider_def_html = _normalize_text_with_inline_numbers(provider_def)
+    def _normalize_bullet_items(value, empty_text: str) -> str:
+        if isinstance(value, str):
+            items = [value] if value.strip() else []
+        elif isinstance(value, list):
+            items = [str(item).strip() for item in value if str(item).strip()]
+        else:
+            items = []
+        if not items:
+            items = [empty_text]
+        return "".join(
+            f"<li>{_normalize_text_with_inline_numbers(item)}</li>" for item in items
+        )
+
+    if aligned_pairs:
+        row_html = []
+        for pair in aligned_pairs:
+            provider_text = pair.get("provider_manual", "") or "No grounded provider manual evidence was available for this point."
+            policy_text = pair.get("policy_update", "") or "No closely matching policy evidence was available for this provider-manual point."
+            row_html.append(
+                "<tr>"
+                f"<td style=\"padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;\">"
+                f"<ul style=\"margin:0; padding-left:1.2rem;\"><li>{_normalize_text_with_inline_numbers(provider_text)}</li></ul>"
+                "</td>"
+                f"<td style=\"padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;\">"
+                f"<ul style=\"margin:0; padding-left:1.2rem;\"><li>{_normalize_text_with_inline_numbers(policy_text)}</li></ul>"
+                "</td>"
+                "</tr>"
+            )
+        table1_body = "".join(row_html)
+    else:
+        policy_def_html = _normalize_bullet_items(
+            policy_def,
+            "No grounded policy evidence was available for this point.",
+        )
+        provider_def_html = _normalize_bullet_items(
+            provider_def,
+            "No grounded provider manual evidence was available for this point.",
+        )
+        table1_body = (
+            "<tr>"
+            f"<td style=\"padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;\"><ul style=\"margin:0; padding-left:1.2rem;\">{provider_def_html}</ul></td>"
+            f"<td style=\"padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;\"><ul style=\"margin:0; padding-left:1.2rem;\">{policy_def_html}</ul></td>"
+            "</tr>"
+        )
     sim_items_html = "".join(
         f"<li>{_normalize_text_with_inline_numbers(s)}</li>" for s in similarities
     ) or "<li>None identified</li>"
@@ -665,10 +708,7 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;">{provider_def_html}</td>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;">{policy_def_html}</td>
-        </tr>
+        {table1_body}
       </tbody>
     </table>
     """
