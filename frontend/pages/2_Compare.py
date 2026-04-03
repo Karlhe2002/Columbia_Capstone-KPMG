@@ -6,6 +6,8 @@ import traceback
 import html
 import markdown
 import re
+import threading
+import uuid
 from datetime import date, datetime
 
 # ============================================================
@@ -21,6 +23,7 @@ sys.path.append(str(SRC_DIR))  # allow import from src/
 # ========== IMPORT PIPELINE MODULES =========================
 # ============================================================
 try:
+    from healthcare_rag_llm.llm.llm_client import GenerationCancelled
     from healthcare_rag_llm.llm.llm_client import LLMClient
     from healthcare_rag_llm.llm.response_generator import ResponseGenerator
     from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
@@ -72,7 +75,15 @@ We retrieve both sources and generate a cited side-by-side comparison.
 
 **Tips**  
 Use a concise concept (e.g., "medical necessity") and add qualifiers if needed.
-""")
+    """)
+
+compare_status_notice = st.session_state.pop("compare_status_notice", None)
+if compare_status_notice:
+    st.info(compare_status_notice)
+
+compare_status_error = st.session_state.pop("compare_status_error", None)
+if compare_status_error:
+    st.error(f"Error: {compare_status_error}")
 
 # ============================================================
 # ========== INITIALIZE RAG PIPELINE =========================
@@ -106,6 +117,192 @@ def get_rag_pipeline_lazy():
     if "compare_rag_pipeline" not in st.session_state:
         st.session_state["compare_rag_pipeline"] = load_rag_pipeline()
     return st.session_state["compare_rag_pipeline"]
+
+
+@st.cache_resource
+def _get_compare_task_store():
+    # This is the "job board" for Compare mode.
+    # It does NOT store compare chat history.
+    # It only stores temporary state for comparisons that are currently running.
+    return {"tasks": {}, "lock": threading.Lock()}
+
+
+def _snapshot_compare_task(task_id: str):
+    # Read the current state of one running compare job.
+    # The UI uses this to check whether the comparison is still running or was cancelled.
+    store = _get_compare_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        task = tasks.get(task_id)
+        if not task:
+            return None
+        return dict(task)
+
+
+def _set_compare_task_fields(task_id: str, **fields):
+    # Update part of one compare job record.
+    # Example uses:
+    # - mark stop as requested
+    # - mark the compare job completed
+    # - save an error message for that job
+    store = _get_compare_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        task = tasks.get(task_id)
+        if task:
+            task.update(fields)
+
+
+def _remove_compare_task(task_id: str):
+    # Remove a compare job from the job board after we no longer need it.
+    # This cleans up temporary state only, not compare chat history.
+    store = _get_compare_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        return tasks.pop(task_id, None)
+
+
+def _request_compare_task_cancel(task_id: str):
+    # This is what "Stop" means in Compare mode.
+    # It does NOT clear old compare messages.
+    # It only marks the current in-progress comparison as "please cancel".
+    _set_compare_task_fields(task_id, cancel_requested=True)
+
+
+def _start_compare_task(rag_pipeline, question: str, is_followup: bool) -> str:
+    # Start a brand-new temporary compare job.
+    # Think of this as creating a "draft comparison task" that runs in the background.
+    # The returned task id is how the UI keeps track of that draft.
+    task_id = uuid.uuid4().hex
+    store = _get_compare_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        tasks[task_id] = {
+            "status": "running",
+            "cancel_requested": False,
+            "question": question,
+            "is_followup": is_followup,
+            "result": None,
+            "error": None,
+        }
+
+    def _cancel_check():
+        # The backend keeps calling this while it works.
+        # If it returns True, the backend knows the user clicked Stop.
+        with lock:
+            task = tasks.get(task_id)
+            return bool(task and task.get("cancel_requested"))
+
+    def _set_status(**fields):
+        # Helper used by the worker to update the job board safely.
+        # Example: switch status from "running" to "completed" or "cancelled".
+        with lock:
+            task = tasks.get(task_id)
+            if task:
+                task.update(fields)
+
+    def _worker():
+        # This is the background worker that does the real compare generation.
+        # It runs outside the main UI flow so the page can stay responsive and show Stop.
+        try:
+            if rag_pipeline:
+                result = rag_pipeline.answer_compare_definitions(
+                    question,
+                    concept=question,
+                    cancel_check=_cancel_check,
+                )
+            else:
+                result = {
+                    "answer": (
+                        "Mock mode: Backend not connected.\n"
+                        "No grounded answer can be generated. "
+                        "Please connect the backend (RAG pipeline) to enable cited answers."
+                    ),
+                    "evidence_dict": {},
+                    "retrieved_docs": [],
+                    "followup_questions": [],
+                    "compare_sections": {},
+                }
+
+            if _cancel_check():
+                _set_status(status="cancelled", result=None)
+            else:
+                _set_status(status="completed", result=result)
+        except GenerationCancelled:
+            _set_status(status="cancelled", result=None)
+        except Exception as e:
+            _set_status(status="error", error=str(e))
+
+    threading.Thread(target=_worker, name=f"compare-task-{task_id[:8]}", daemon=True).start()
+    return task_id
+
+
+def _finalize_compare_task():
+    # This is the bridge from "temporary compare job" to "visible compare chat".
+    # If the job finished successfully, we append the result to compare history.
+    # If the job was cancelled, we throw away only that temporary job.
+    task_id = st.session_state.get("compare_task_id")
+    if not task_id:
+        return
+
+    snapshot = _snapshot_compare_task(task_id)
+    if not snapshot:
+        st.session_state.pop("compare_task_id", None)
+        return
+
+    status = snapshot.get("status")
+    if status == "completed":
+        result = snapshot.get("result") or {}
+        answer = result.get("answer", "No answer returned.")
+        evidence_dict = result.get("evidence_dict", {})
+        retrieved_docs = result.get("retrieved_docs", [])
+        retrieved_docs_grouped = {}
+        followup_questions = result.get("followup_questions", [])
+        compare_sections = result.get("compare_sections", {})
+        if isinstance(retrieved_docs, dict):
+            policy_docs = retrieved_docs.get("policy", []) or []
+            provider_docs = retrieved_docs.get("provider_manual", []) or []
+            retrieved_docs_grouped = {
+                "policy": policy_docs,
+                "provider_manual": provider_docs,
+            }
+            retrieved_docs = policy_docs + provider_docs
+        st.session_state["compare_history"].append({
+            "role": "assistant",
+            "content": answer,
+            "evidence_dict": evidence_dict,
+            "retrieved_docs": retrieved_docs,
+            "retrieved_docs_grouped": retrieved_docs_grouped,
+            "compare_sections": compare_sections,
+            "followup_questions": followup_questions,
+            "is_followup": bool(snapshot.get("is_followup")),
+        })
+        _remove_compare_task(task_id)
+        st.session_state.pop("compare_task_id", None)
+        st.rerun()
+
+    if status == "cancelled":
+        _remove_compare_task(task_id)
+        st.session_state.pop("compare_task_id", None)
+        st.session_state["compare_status_notice"] = (
+            "Stopped the in-flight comparison. Earlier chat memory was preserved."
+        )
+        st.rerun()
+
+    if status == "error":
+        if st.session_state["compare_history"] and st.session_state["compare_history"][-1].get("role") == "user":
+            st.session_state["compare_history"].pop()
+        _remove_compare_task(task_id)
+        st.session_state.pop("compare_task_id", None)
+        st.session_state["compare_status_error"] = snapshot.get("error") or "Unknown error"
+        st.rerun()
+
+
+_finalize_compare_task()
 
 # ============================================================
 # ========== HELPERS =========================================
@@ -224,10 +421,28 @@ _COMPARE_CSS = """
 .chat-bubble table td, .chat-bubble table th {
     padding: 8px 12px; border: 1px solid #D0D0D0; vertical-align: top; color: #333;
 }
-.chat-bubble table td, .chat-bubble table th, .chat-bubble a, .chat-bubble li, .chat-bubble span {
-    word-break: break-word;
-    overflow-wrap: anywhere;
-}
+    .chat-bubble table td, .chat-bubble table th, .chat-bubble a, .chat-bubble li, .chat-bubble span {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+    div[data-testid="stButton"] > button[kind="secondary"] {
+        border-radius: 999px;
+    }
+    .generation-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin: 0.75rem 0 0.35rem 0;
+        padding: 0.85rem 1rem;
+        background: linear-gradient(135deg, #eef6ff 0%, #e2efff 100%);
+        border: 1px solid #c9def8;
+        border-radius: 14px;
+    }
+    .generation-status-text {
+        color: #14559a;
+        font-size: 15px;
+    }
 </style>
 """
 
@@ -697,7 +912,49 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ============================================================
 # ========== FOLLOW-UP QUESTION BUTTONS ======================
 # ============================================================
-is_generating_compare = "compare_pending_query" in st.session_state
+active_compare_task = _snapshot_compare_task(st.session_state.get("compare_task_id", ""))
+is_generating_compare = bool(active_compare_task)
+
+
+@st.fragment(run_every="1s")
+def render_compare_generation_controls():
+    # Show the "currently comparing" UI for the active job.
+    # This is where the user sees the banner and the Stop button.
+    _finalize_compare_task()
+    task_id = st.session_state.get("compare_task_id")
+    if not task_id:
+        return
+
+    snapshot = _snapshot_compare_task(task_id)
+    if not snapshot:
+        st.session_state.pop("compare_task_id", None)
+        return
+
+    if snapshot.get("status") == "running":
+        col1, col2, col3 = st.columns([7.2, 0.8, 1.2], vertical_alignment="center")
+        with col1:
+            st.markdown(
+                """
+                <div class="generation-status">
+                    <div class="generation-status-text">
+                        Comparing definitions. You can stop this turn without clearing earlier chat memory.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col2:
+            st.markdown("&nbsp;", unsafe_allow_html=True)
+        with col3:
+            if st.button("Stop", key=f"stop_compare_generation_{task_id}", type="secondary", use_container_width=True):
+                _request_compare_task_cancel(task_id)
+                st.rerun()
+        if snapshot.get("cancel_requested"):
+            st.caption("Stopping the current comparison and preserving earlier chat memory.")
+
+
+if is_generating_compare:
+    render_compare_generation_controls()
 
 if (not is_generating_compare) and st.session_state["compare_history"]:
     last_msg = st.session_state["compare_history"][-1]
@@ -709,10 +966,13 @@ if (not is_generating_compare) and st.session_state["compare_history"]:
             for i, (col, q) in enumerate(zip(cols, last_msg["followup_questions"])):
                 with col:
                     if st.button(q, key=f"compare_followup_{i}"):
-                        # Button clicks do not answer immediately; they queue work for the next rerun.
                         st.session_state["compare_history"].append({"role": "user", "content": q})
-                        st.session_state["compare_pending_query"] = q
-                        st.session_state["compare_pending_is_followup"] = True
+                        rag_pipeline = get_rag_pipeline_lazy()
+                        st.session_state["compare_task_id"] = _start_compare_task(
+                            rag_pipeline=rag_pipeline,
+                            question=q,
+                            is_followup=True,
+                        )
                         st.rerun()
 
 
@@ -774,72 +1034,25 @@ if submitted:
                 rag_pipeline.chat_history.clear()
             except Exception:
                 pass
-        st.session_state["compare_pending_query"] = user_query
-        st.session_state["compare_pending_is_followup"] = False
+        rag_pipeline = get_rag_pipeline_lazy()
+        st.session_state["compare_task_id"] = _start_compare_task(
+            rag_pipeline=rag_pipeline,
+            question=user_query,
+            is_followup=False,
+        )
         st.rerun()
 
 if followup_submitted:
     if not user_query.strip():
         st.warning("Please enter a follow-up question before submitting.")
     else:
-        # Follow-ups extend the current conversation instead of clearing it.
         st.session_state["compare_history"].append({"role": "user", "content": user_query})
-        st.session_state["compare_pending_query"] = user_query
-        st.session_state["compare_pending_is_followup"] = True
+        rag_pipeline = get_rag_pipeline_lazy()
+        st.session_state["compare_task_id"] = _start_compare_task(
+            rag_pipeline=rag_pipeline,
+            question=user_query,
+            is_followup=True,
+        )
         st.rerun()
 
 # Submit logic — phase 2
-if "compare_pending_query" in st.session_state:
-    pending_query = st.session_state.pop("compare_pending_query")
-    pending_is_followup = st.session_state.pop("compare_pending_is_followup", False)
-    # Streamlit reruns the whole file after every interaction; this block is the "do the work now" phase.
-    with st.spinner("Retrieving information..." if pending_is_followup else "Comparing definitions..."):
-        try:
-            rag_pipeline = get_rag_pipeline_lazy()
-            if rag_pipeline:
-                # Both initial compare and follow-ups use the compare endpoint
-                # so the response always renders as the side-by-side table format.
-                result = rag_pipeline.answer_compare_definitions(
-                    pending_query,
-                    concept=pending_query,
-                )
-                answer = result.get("answer", "No answer returned.")
-                evidence_dict = result.get("evidence_dict", {})
-                retrieved_docs = result.get("retrieved_docs", [])
-                retrieved_docs_grouped = {}
-                followup_questions = result.get("followup_questions", [])
-                compare_sections = result.get("compare_sections", {})
-                if isinstance(retrieved_docs, dict):
-                    # Preserve the split source groups for the side-by-side retrieved source table.
-                    policy_docs = retrieved_docs.get("policy", []) or []
-                    provider_docs = retrieved_docs.get("provider_manual", []) or []
-                    retrieved_docs_grouped = {
-                        "policy": policy_docs,
-                        "provider_manual": provider_docs,
-                    }
-                    retrieved_docs = policy_docs + provider_docs
-            else:
-                answer = (
-                    "Mock mode: Backend not connected.\n"
-                    "No grounded answer can be generated. "
-                    "Please connect the backend (RAG pipeline) to enable cited answers."
-                )
-                evidence_dict = {}
-                retrieved_docs = []
-                retrieved_docs_grouped = {}
-                followup_questions = []
-                compare_sections = {}
-            st.session_state["compare_history"].append({
-                "role": "assistant",
-                "content": answer,
-                "evidence_dict": evidence_dict,
-                "retrieved_docs": retrieved_docs,
-                "retrieved_docs_grouped": retrieved_docs_grouped,
-                "compare_sections": compare_sections,
-                "followup_questions": followup_questions,
-                "is_followup": pending_is_followup,
-            })
-            st.rerun()
-        except Exception as e:
-            st.session_state["compare_history"].pop()
-            st.error(f"Error: {e}")

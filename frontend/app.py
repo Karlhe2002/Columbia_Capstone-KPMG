@@ -4,6 +4,8 @@ import traceback
 import re
 from pathlib import Path
 import sys
+import threading
+import uuid
 from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
 import html
 from datetime import date, datetime
@@ -22,6 +24,7 @@ sys.path.append(str(SRC_DIR))  # allow import from src/
 # ============================================================
 try:
     from healthcare_rag_llm.llm.llm_client import LLMClient
+    from healthcare_rag_llm.llm.llm_client import GenerationCancelled
     from healthcare_rag_llm.llm.response_generator import ResponseGenerator
     #from healthcare_rag_llm.llm.guardrail_response_wrapper import ResponseGenerator
     HAS_BACKEND = True
@@ -78,7 +81,15 @@ We retrieve relevant NYS Medicaid sources and generate a response with citations
 
 **Tips**  
 Use specific terms (program, topic, date range) and verify against citations.
-""")
+    """)
+
+qa_status_notice = st.session_state.pop("qa_status_notice", None)
+if qa_status_notice:
+    st.info(qa_status_notice)
+
+qa_status_error = st.session_state.pop("qa_status_error", None)
+if qa_status_error:
+    st.error(f"Error: {qa_status_error}")
 
 # ========== INITIALIZE RAG PIPELINE =========================
 # ============================================================
@@ -111,6 +122,174 @@ def get_rag_pipeline_lazy():
     if "rag_pipeline" not in st.session_state:
         st.session_state["rag_pipeline"] = load_rag_pipeline()
     return st.session_state["rag_pipeline"]
+
+
+@st.cache_resource
+def _get_qa_task_store():
+    # This is the "job board" for Q&A mode.
+    # It does NOT store conversation history.
+    # It only stores temporary state for answers that are currently running.
+    return {"tasks": {}, "lock": threading.Lock()}
+
+
+def _snapshot_qa_task(task_id: str):
+    # Read the current state of one running job.
+    # The UI uses this to ask things like:
+    # "Is the answer still running?" or "Was it cancelled?"
+    store = _get_qa_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        task = tasks.get(task_id)
+        if not task:
+            return None
+        return dict(task)
+
+
+def _set_qa_task_fields(task_id: str, **fields):
+    # Update part of one job record.
+    # Example uses:
+    # - mark stop as requested
+    # - mark the job completed
+    # - save an error message for that job
+    store = _get_qa_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        task = tasks.get(task_id)
+        if task:
+            task.update(fields)
+
+
+def _remove_qa_task(task_id: str):
+    # Remove a job from the job board after we no longer need to track it.
+    # This cleans up temporary state only, not chat history.
+    store = _get_qa_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        return tasks.pop(task_id, None)
+
+
+def _request_qa_task_cancel(task_id: str):
+    # This is what "Stop" really does.
+    # It does NOT clear old messages.
+    # It only marks the current in-progress answer as "please cancel".
+    _set_qa_task_fields(task_id, cancel_requested=True)
+
+
+def _start_qa_task(rag_pipeline, question: str, is_followup: bool) -> str:
+    # Start a brand-new temporary answer job.
+    # Think of this as creating a "draft answer task" that runs in the background.
+    # The returned task id is how the UI keeps track of that draft.
+    task_id = uuid.uuid4().hex
+    store = _get_qa_task_store()
+    tasks = store["tasks"]
+    lock = store["lock"]
+    with lock:
+        tasks[task_id] = {
+            "status": "running",
+            "cancel_requested": False,
+            "question": question,
+            "is_followup": is_followup,
+            "result": None,
+            "error": None,
+        }
+
+    def _cancel_check():
+        # The backend keeps calling this while it works.
+        # If it returns True, the backend knows the user clicked Stop.
+        with lock:
+            task = tasks.get(task_id)
+            return bool(task and task.get("cancel_requested"))
+
+    def _set_status(**fields):
+        # Helper used by the worker to update the job board safely.
+        # Example: switch status from "running" to "completed" or "cancelled".
+        with lock:
+            task = tasks.get(task_id)
+            if task:
+                task.update(fields)
+
+    def _worker():
+        # This is the background worker that does the real answer generation.
+        # It runs outside the main UI flow so the page can stay responsive and show Stop.
+        try:
+            if rag_pipeline:
+                result = rag_pipeline.answer_question(
+                    question,
+                    cancel_check=_cancel_check,
+                )
+            else:
+                result = {
+                    "answer": (
+                        "Mock mode: Backend not connected.\n"
+                        "No grounded answer can be generated. "
+                        "Please connect the backend (RAG pipeline) to enable cited answers."
+                    ),
+                    "evidence_dict": {},
+                    "retrieved_docs": [],
+                    "followup_questions": [],
+                }
+
+            if _cancel_check():
+                _set_status(status="cancelled", result=None)
+            else:
+                _set_status(status="completed", result=result)
+        except GenerationCancelled:
+            _set_status(status="cancelled", result=None)
+        except Exception as e:
+            _set_status(status="error", error=str(e))
+
+    threading.Thread(target=_worker, name=f"qa-task-{task_id[:8]}", daemon=True).start()
+    return task_id
+
+
+def _finalize_qa_task():
+    # This is the bridge from "temporary job" to "visible chat".
+    # If the job finished successfully, we append the answer to chat history.
+    # If the job was cancelled, we throw away only that temporary job.
+    task_id = st.session_state.get("qa_task_id")
+    if not task_id:
+        return
+
+    snapshot = _snapshot_qa_task(task_id)
+    if not snapshot:
+        st.session_state.pop("qa_task_id", None)
+        return
+
+    status = snapshot.get("status")
+    if status == "completed":
+        result = snapshot.get("result") or {}
+        st.session_state["history"].append({
+            "role": "assistant",
+            "content": result.get("answer", "No answer returned."),
+            "evidence_dict": result.get("evidence_dict", {}),
+            "retrieved_docs": result.get("retrieved_docs", []),
+            "followup_questions": result.get("followup_questions", []),
+        })
+        _remove_qa_task(task_id)
+        st.session_state.pop("qa_task_id", None)
+        st.rerun()
+
+    if status == "cancelled":
+        _remove_qa_task(task_id)
+        st.session_state.pop("qa_task_id", None)
+        st.session_state["qa_status_notice"] = (
+            "Stopped the in-flight answer. Earlier chat memory was preserved."
+        )
+        st.rerun()
+
+    if status == "error":
+        if st.session_state["history"] and st.session_state["history"][-1].get("role") == "user":
+            st.session_state["history"].pop()
+        _remove_qa_task(task_id)
+        st.session_state.pop("qa_task_id", None)
+        st.session_state["qa_status_error"] = snapshot.get("error") or "Unknown error"
+        st.rerun()
+
+
+_finalize_qa_task()
 
 
 def _remove_none_caveats(text: str) -> str:
@@ -340,6 +519,27 @@ st.markdown(
     input, button, label, div[data-testid="stMarkdownContainer"] {
         font-size: 15px !important;
     }
+
+    div[data-testid="stButton"] > button[kind="secondary"] {
+        border-radius: 999px;
+    }
+
+    .generation-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin: 0.75rem 0 0.35rem 0;
+        padding: 0.85rem 1rem;
+        background: linear-gradient(135deg, #eef6ff 0%, #e2efff 100%);
+        border: 1px solid #c9def8;
+        border-radius: 14px;
+    }
+
+    .generation-status-text {
+        color: #14559a;
+        font-size: 15px;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -402,7 +602,49 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ============================================================
 # ========== FOLLOW-UP QUESTION BUTTONS ======================
 # ============================================================
-is_generating_answer = "pending_query" in st.session_state
+active_qa_task = _snapshot_qa_task(st.session_state.get("qa_task_id", ""))
+is_generating_answer = bool(active_qa_task)
+
+
+@st.fragment(run_every="1s")
+def render_generation_controls():
+    # Show the "currently generating" UI for the active job.
+    # This is where the user sees the banner and the Stop button.
+    _finalize_qa_task()
+    task_id = st.session_state.get("qa_task_id")
+    if not task_id:
+        return
+
+    snapshot = _snapshot_qa_task(task_id)
+    if not snapshot:
+        st.session_state.pop("qa_task_id", None)
+        return
+
+    if snapshot.get("status") == "running":
+        col1, col2, col3 = st.columns([7.2, 0.8, 1.2], vertical_alignment="center")
+        with col1:
+            st.markdown(
+                """
+                <div class="generation-status">
+                    <div class="generation-status-text">
+                        Generating an answer. You can stop this turn without clearing earlier chat memory.
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col2:
+            st.markdown("&nbsp;", unsafe_allow_html=True)
+        with col3:
+            if st.button("Stop", key=f"stop_generation_{task_id}", type="secondary", use_container_width=True):
+                _request_qa_task_cancel(task_id)
+                st.rerun()
+        if snapshot.get("cancel_requested"):
+            st.caption("Stopping the current answer and preserving earlier chat memory.")
+
+
+if is_generating_answer:
+    render_generation_controls()
 
 followup_area = st.empty()
 if (not is_generating_answer) and st.session_state["history"]:
@@ -417,9 +659,12 @@ if (not is_generating_answer) and st.session_state["history"]:
                     with col:
                         if st.button(q, key=f"followup_{i}"):
                             st.session_state["history"].append({"role": "user", "content": q})
-                            st.session_state["pending_query"] = q
-                            st.session_state["pending_compare"] = False
-                            st.session_state["pending_is_followup"] = True
+                            rag_pipeline = get_rag_pipeline_lazy()
+                            st.session_state["qa_task_id"] = _start_qa_task(
+                                rag_pipeline=rag_pipeline,
+                                question=q,
+                                is_followup=True,
+                            )
                             st.rerun()
 
 # ============================================================
@@ -479,8 +724,12 @@ if submitted:
                 rag_pipeline.chat_history.clear()
             except Exception:
                 pass
-        st.session_state["pending_query"] = user_query
-        st.session_state["pending_is_followup"] = False
+        rag_pipeline = get_rag_pipeline_lazy()
+        st.session_state["qa_task_id"] = _start_qa_task(
+            rag_pipeline=rag_pipeline,
+            question=user_query,
+            is_followup=False,
+        )
         st.rerun()
 
 if followup_submitted:
@@ -488,46 +737,13 @@ if followup_submitted:
         st.warning("Please enter a follow-up question before submitting.")
     else:
         st.session_state["history"].append({"role": "user", "content": user_query})
-        st.session_state["pending_query"] = user_query
-        st.session_state["pending_is_followup"] = True
+        rag_pipeline = get_rag_pipeline_lazy()
+        st.session_state["qa_task_id"] = _start_qa_task(
+            rag_pipeline=rag_pipeline,
+            question=user_query,
+            is_followup=True,
+        )
         st.rerun()
-
-# Submit logic ? phase 2: generate answer (runs on the rerun, user message already visible)
-if "pending_query" in st.session_state:
-    pending_query = st.session_state.pop("pending_query")
-    pending_is_followup = st.session_state.pop("pending_is_followup", False)
-    with st.spinner("Retrieving information..."):
-        try:
-            rag_pipeline = get_rag_pipeline_lazy()
-            if rag_pipeline:
-                # --- Real backend ---
-                history_for_llm = st.session_state["history"] if pending_is_followup else []
-                result = rag_pipeline.answer_question(pending_query, history=history_for_llm)
-                answer = result.get("answer", "No answer returned.")
-                evidence_dict = result.get("evidence_dict", {})
-                retrieved_docs = result.get("retrieved_docs", [])
-                followup_questions = result.get("followup_questions", [])
-            else:
-                # --- Mock mode ---
-                answer = (
-                    "Mock mode: Backend not connected.\n"
-                    "No grounded answer can be generated. "
-                    "Please connect the backend (RAG pipeline) to enable cited answers."
-                )
-                evidence_dict = {}
-                retrieved_docs = []
-                followup_questions = []
-            st.session_state["history"].append({
-                "role": "assistant",
-                "content": answer,
-                "evidence_dict": evidence_dict,
-                "retrieved_docs": retrieved_docs,
-                "followup_questions": followup_questions,
-            })
-            st.rerun()
-        except Exception as e:
-            st.session_state["history"].pop()  # remove orphaned user message
-            st.error(f"Error: {e}")
 
 
 # ============================================================

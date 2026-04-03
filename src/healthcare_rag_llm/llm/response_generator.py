@@ -4,7 +4,7 @@ import json
 import re
 from datetime import date, datetime
 from typing import Dict, List, Optional
-from healthcare_rag_llm.llm.llm_client import LLMClient
+from healthcare_rag_llm.llm.llm_client import GenerationCancelled, LLMClient
 from healthcare_rag_llm.graph_builder.queries import query_chunks
 from healthcare_rag_llm.embedding.HealthcareEmbedding import get_embedding_singleton
 from healthcare_rag_llm.reranking.reranker import apply_rerank_to_chunks
@@ -254,7 +254,34 @@ class ResponseGenerator:
         candidate = cls._clean_compare_concept(candidate)
         return candidate or cls._clean_compare_concept(raw)
 
-    def answer_question(self, question: str, top_k: int = 8, rerank_top_k: int = 30, history: Optional[List[Dict]] = None) -> Dict:
+    def _compose_messages(self, user_msg: str, system_prompt: Optional[str] = None) -> List[Dict]:
+        # Build the model input from already-saved history plus the new user request.
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.extend(self.chat_history.get_messages())
+        if messages and messages[-1]["role"] == "user":
+            messages[-1]["content"] = user_msg
+        else:
+            messages.append({"role": "user", "content": user_msg})
+        return messages
+
+    def _finalize_turn(self, question: str, llm_response: str) -> None:
+        # This is the "save the new turn" step.
+        # We call it only after the answer fully succeeds, so stopped turns never get saved.
+        self.chat_history.add("user", question)
+        self.chat_history.add("assistant", llm_response)
+
+    def answer_question(
+        self,
+        question: str,
+        top_k: int = 8,
+        rerank_top_k: int = 30,
+        history: Optional[List[Dict]] = None,
+        cancel_check=None,
+    ) -> Dict:
+        # Full Q&A pipeline.
+        # Important rule: keep the current turn temporary until the very end.
         """
         Full question-answering pipeline.
 
@@ -263,9 +290,9 @@ class ResponseGenerator:
           2. Construct context + prompt
           3. Generate final response using the LLM
         """
-        self.chat_history.add("user", question)
-
         # 0. Smart filter
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
         retrieval_query = (filters.get("retrieval_query") or question).strip()
         normalized_query = (filters.get("normalized_query") or question).strip()
@@ -302,6 +329,8 @@ class ResponseGenerator:
             )
         #4 Take top k chunks
         final_chunks = retrieved_chunks[:top_k]
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
         
         # 3. Context
         context = self._format_chunks(final_chunks)
@@ -356,23 +385,19 @@ Formatting requirements (strict):
         #     user_prompt=user_msg,
         #     system_prompt=self.system_prompt
         # )
-        messages = []
-        if self.system_prompt:
-            messages.append({"role": "system", "content": self.system_prompt})
-        messages.extend(self.chat_history.get_messages())
-        if messages and messages[-1]['role'] == "user":
-            messages[-1]["content"] = user_msg
-        else:
-            messages.append({"role": "user", "content": user_msg})
-        
-        llm_response = self.llm_client.chat(messages=messages)
-        self.chat_history.add("assistant", llm_response)
+        messages = self._compose_messages(user_msg=user_msg, system_prompt=self.system_prompt)
+        llm_response = self.llm_client.chat(messages=messages, cancel_check=cancel_check)
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
 
         followup_questions = self._generate_followup_questions(
             question=question,
             answer=llm_response,
             retrieved_chunks=final_chunks,
         )
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
+        self._finalize_turn(question, llm_response)
 
         return {
             "question": question,
@@ -478,7 +503,10 @@ Formatting requirements (strict):
         concept: Optional[str] = None,
         top_k_per_source: int = 4,
         rerank_top_k: int = 30,
+        cancel_check=None,
     ) -> Dict:
+        # Full compare pipeline.
+        # Same rule as Q&A: keep the current turn temporary until the very end.
         """
         Compare a concept definition across policy vs provider manual documents.
 
@@ -487,7 +515,8 @@ Formatting requirements (strict):
           2) Retrieve by doc_classes=['provider_manual']
           3) Build dual-source context and ask LLM for side-by-side comparison
         """
-        self.chat_history.add("user", question)
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
 
         resolved_concept = self._resolve_compare_concept(question, concept)
@@ -546,6 +575,8 @@ Formatting requirements (strict):
 
         policy_final = policy_chunks[:top_k_per_source]
         provider_manual_final = provider_manual_chunks[:top_k_per_source]
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
 
         policy_context = self._format_chunks(policy_final, compact_text=True)
         provider_context = self._format_chunks(provider_manual_final, compact_text=True)
@@ -602,17 +633,10 @@ Internal decision process:
 - Use older evidence only as background or to explain differences.
 """.strip()
 
-        messages = []
-        if self.compare_system_prompt:
-            messages.append({"role": "system", "content": self.compare_system_prompt})
-        messages.extend(self.chat_history.get_messages())
-        if messages and messages[-1]["role"] == "user":
-            messages[-1]["content"] = user_msg
-        else:
-            messages.append({"role": "user", "content": user_msg})
-
-        llm_response = self.llm_client.chat(messages=messages)
-        self.chat_history.add("assistant", llm_response)
+        messages = self._compose_messages(user_msg=user_msg, system_prompt=self.compare_system_prompt)
+        llm_response = self.llm_client.chat(messages=messages, cancel_check=cancel_check)
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
         compare_sections = self._parse_compare_response(llm_response)
 
         all_chunks = policy_final + provider_manual_final
@@ -622,6 +646,9 @@ Internal decision process:
             retrieved_chunks=all_chunks,
             mode="compare",
         )
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
+        self._finalize_turn(question, llm_response)
 
         return {
             "question": question,

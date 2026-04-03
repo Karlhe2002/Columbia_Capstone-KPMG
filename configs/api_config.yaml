@@ -16,25 +16,15 @@ api_providers:
     provider: "anthropic"
   
   gemini:
-    api_key: "your-api-key" 
+    api_key: "AIzaSyB2BfV-FpZchZ2Da8Wb0o-HFJZU81FWVoQ"
     base_url: "https://generativelanguage.googleapis.com"
     provider: "gemini"
-
-  deepseek:
-    api_key: "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-    base_url: "https://api.deepseek.com"
-    provider: "deepseek"
-  
 
 # Default API configuration
 default_provider: "gemini"
 
 # Model configuration
 models:
-  deepseek-chat:
-    provider: "deepseek"
-    max_tokens: 4000
-
   gemini-2.5-flash:
     provider: "gemini"
     max_tokens: 4000
