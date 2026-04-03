@@ -182,15 +182,15 @@ def format_retrieved_docs_compare_table(retrieved_docs_grouped):
     <div style="width:100%; overflow-x:auto;">
     <table style="width:100%; border-collapse:collapse; margin:0.6rem 0 0.2rem 0; table-layout:fixed;">
       <thead>
-        <tr style="background:#E8F0FE;">
+        <tr style="background:#E8F0FE; color:#333;">
           <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Provider Manual Sources</th>
           <th style="padding:8px 12px; border:1px solid #D0D0D0; width:50%; text-align:left;">Medicaid Update Sources</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{provider_html}</td>
-          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere;">{policy_html}</td>
+          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere; color:#333;">{provider_html}</td>
+          <td style="padding:8px 12px; border:1px solid #D0D0D0; vertical-align:top; word-break:break-word; overflow-wrap:anywhere; color:#333;">{policy_html}</td>
         </tr>
       </tbody>
     </table>
@@ -205,8 +205,14 @@ _COMPARE_CSS = """
     line-height: 1.6; word-wrap: break-word; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 .chat-bubble.assistant {
-    background-color: #F4F4F4; border: 1px solid #E0E0E0; color: #000;
+    background-color: #F4F4F4; border: 1px solid #E0E0E0; color: #000 !important;
     border-top-left-radius: 0.3rem; font-size: 15px;
+}
+.chat-bubble.assistant * {
+    color: #000 !important;
+}
+.chat-bubble.assistant a {
+    color: #1a6dd4 !important;
 }
 .avatar {
     width: 36px; height: 36px; border-radius: 50%;
@@ -214,9 +220,9 @@ _COMPARE_CSS = """
     font-size: 18px; font-weight: bold; background-color: #E5E7EB; margin: 0 0.5rem;
 }
 .chat-bubble table { font-size: 14px; border-collapse: collapse; width: 100%; }
-.chat-bubble table th { background-color: #E8F0FE; font-weight: 600; }
+.chat-bubble table th { background-color: #E8F0FE; font-weight: 600; color: #333; }
 .chat-bubble table td, .chat-bubble table th {
-    padding: 8px 12px; border: 1px solid #D0D0D0; vertical-align: top;
+    padding: 8px 12px; border: 1px solid #D0D0D0; vertical-align: top; color: #333;
 }
 .chat-bubble table td, .chat-bubble table th, .chat-bubble a, .chat-bubble li, .chat-bubble span {
     word-break: break-word;
@@ -438,15 +444,15 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     table1 = f"""
     <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
       <thead>
-        <tr style="background:#E8F0FE;">
+        <tr style="background:#E8F0FE; color:#333;">
           <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Provider Manual Definition</th>
           <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Medicaid Update Definition</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{provider_def_html}</td>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;">{policy_def_html}</td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;">{provider_def_html}</td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;">{policy_def_html}</td>
         </tr>
       </tbody>
     </table>
@@ -455,15 +461,15 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     table2 = f"""
     <table style="width:100%; border-collapse:collapse; margin:0.8rem 0;">
       <thead>
-        <tr style="background:#E8F0FE;">
+        <tr style="background:#E8F0FE; color:#333;">
           <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Similarities</th>
           <th style="padding:8px 12px; border:1px solid #ccc; width:50%; text-align:left;">Differences</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{sim_items_html}</ul></td>
-          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top;"><ul style="margin:0; padding-left:1.2rem;">{diff_items_html}</ul></td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;"><ul style="margin:0; padding-left:1.2rem;">{sim_items_html}</ul></td>
+          <td style="padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;"><ul style="margin:0; padding-left:1.2rem;">{diff_items_html}</ul></td>
         </tr>
       </tbody>
     </table>
@@ -494,7 +500,7 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     recency_summary = html.escape(_build_recency_summary(retrieved_docs_grouped))
     recency_html = (
         "<div style='margin-bottom:0.8rem; padding:10px 12px; background:#EEF6FF; "
-        "border:1px solid #CFE3FF; border-radius:8px;'>"
+        "color:#333; border:1px solid #CFE3FF; border-radius:8px;'>"
         "<b>Most Up-To-Date Source Signal:</b> "
         f"{recency_summary}"
         "</div>"
@@ -538,14 +544,23 @@ st.markdown(
     .chat-bubble.assistant {
         background-color: #F4F4F4;
         border: 1px solid #E0E0E0;
-        color: #000;
+        color: #000 !important;
         border-top-left-radius: 0.3rem;
+    }
+    .chat-bubble.assistant * {
+        color: #000 !important;
+    }
+    .chat-bubble.assistant a {
+        color: #1a6dd4 !important;
     }
     .chat-bubble.user {
         background-color: #DCF2FF;
         border: 1px solid #CDE9FF;
-        color: #000;
+        color: #000 !important;
         border-top-right-radius: 0.3rem;
+    }
+    .chat-bubble.user * {
+        color: #000 !important;
     }
     .avatar {
         width: 36px; height: 36px;

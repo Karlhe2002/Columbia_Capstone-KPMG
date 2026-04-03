@@ -266,7 +266,7 @@ def format_recency_summary(retrieved_docs):
 
     return (
         "<div style='margin:0.4rem 0 0.8rem 0; padding:10px 12px; background:#EEF6FF; "
-        "border:1px solid #CFE3FF; border-radius:8px;'>"
+        "color:#333; border:1px solid #CFE3FF; border-radius:8px;'>"
         f"{summary}</div>"
     )
 
@@ -296,7 +296,7 @@ st.markdown(
 
     /* chat bubble */
     .chat-bubble {
-        max-width: 70%;
+        max-width: 90%;
         padding: 0.7rem 1rem;
         border-radius: 1rem;
         line-height: 1.6;
@@ -306,14 +306,23 @@ st.markdown(
     .chat-bubble.assistant {
         background-color: #F4F4F4;
         border: 1px solid #E0E0E0;
-        color: #000;
+        color: #000 !important;
         border-top-left-radius: 0.3rem;
+    }
+    .chat-bubble.assistant * {
+        color: #000 !important;
+    }
+    .chat-bubble.assistant a {
+        color: #1a6dd4 !important;
     }
     .chat-bubble.user {
         background-color: #DCF2FF;
         border: 1px solid #CDE9FF;
-        color: #000;
+        color: #000 !important;
         border-top-right-radius: 0.3rem;
+    }
+    .chat-bubble.user * {
+        color: #000 !important;
     }
 
     /* avatar */
@@ -349,36 +358,35 @@ for msg in st.session_state["history"]:
         formatted_sources = format_retrieved_docs(retrieved_docs) if retrieved_docs else ""
         recency_summary_html = format_recency_summary(retrieved_docs) if retrieved_docs else ""
 
-        st.markdown(
-            """
-<div class="chat-row assistant">
-<div class="avatar assistant">&#x1F914;</div>
-<div class="chat-bubble assistant">
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown("**Answer:**")
-        if recency_summary_html:
-            st.markdown(recency_summary_html, unsafe_allow_html=True)
         display_text = _extract_answer_only(text)
-        st.markdown(display_text)
+        display_html = html.escape(display_text).replace("\n", "<br>")
+
+        answer_parts = []
+        answer_parts.append("<b>Answer:</b><br>")
+        if recency_summary_html:
+            answer_parts.append(recency_summary_html)
+        answer_parts.append(f"<p>{display_html}</p>")
         if evidence_dict:
-            st.markdown("")
-            st.markdown("**Evidence:**")
-            st.markdown("_Direct quotes from official documents that support the answer above._")
-            st.markdown(
-                f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_evidence}</ul>",
-                unsafe_allow_html=True,
+            answer_parts.append(
+                "<b>Evidence:</b><br>"
+                "<em>Direct quotes from official documents that support the answer above.</em>"
+                f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_evidence}</ul>"
             )
         if retrieved_docs:
-            st.markdown("")
-            st.markdown("**Retrieved Sources:**")
-            st.markdown("_Document snippets that were retrieved and analyzed to answer your question._")
-            st.markdown(
-                f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_sources}</ul>",
-                unsafe_allow_html=True,
+            answer_parts.append(
+                "<b>Retrieved Sources:</b><br>"
+                "<em>Document snippets that were retrieved and analyzed to answer your question.</em>"
+                f"<ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_sources}</ul>"
             )
-        st.markdown("</div></div>", unsafe_allow_html=True)
+
+        full_html = (
+            '<div class="chat-row assistant">'
+            '<div class="avatar assistant">&#x1F914;</div>'
+            '<div class="chat-bubble assistant">'
+            + "".join(answer_parts)
+            + "</div></div>"
+        )
+        st.markdown(full_html, unsafe_allow_html=True)
     else:
         safe_text = html.escape(text)
         st.markdown(
