@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 
 from healthcare_rag_llm.llm.llm_client import LLMClient
-from healthcare_rag_llm.graph_builder.queries import query_chunks
+from healthcare_rag_llm.graph_builder.queries import query_chunks, query_chunks_sparse
 from healthcare_rag_llm.embedding.HealthcareEmbedding import HealthcareEmbedding
 from healthcare_rag_llm.reranking.reranker import apply_rerank_to_chunks
 from healthcare_rag_llm.llm.chat_history import ChatHistory  # chat history support
@@ -70,6 +70,109 @@ def _build_rerank_query(base_query: str, filters: Dict[str, Any]) -> str:
     if not keyword_hints:
         return base_query
     return f"{base_query}\nKey themes: {', '.join(keyword_hints[:8])}"
+
+
+def _chunk_fusion_key(chunk: Dict[str, Any]) -> str:
+    chunk_id = str(chunk.get("chunk_id") or "").strip()
+    if chunk_id:
+        return chunk_id
+    doc_id = str(chunk.get("doc_id") or "").strip()
+    pages = str(chunk.get("pages") or "").strip()
+    return f"{doc_id}::{pages}"
+
+
+def _fuse_ranked_hits_rrf(
+    dense_hits: List[Dict[str, Any]],
+    sparse_hits: List[Dict[str, Any]],
+    *,
+    rrf_k: int = 60,
+    max_results: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    fused: Dict[str, Dict[str, Any]] = {}
+
+    for source_name, hits in (("dense", dense_hits or []), ("sparse", sparse_hits or [])):
+        for rank, hit in enumerate(hits, start=1):
+            key = _chunk_fusion_key(hit)
+            if key not in fused:
+                base = dict(hit)
+                base["retrieval_sources"] = []
+                base["rrf_score"] = 0.0
+                base.setdefault("dense_score", None)
+                base.setdefault("sparse_score", None)
+                fused[key] = base
+
+            entry = fused[key]
+            entry["rrf_score"] += 1.0 / (rrf_k + rank)
+            if source_name not in entry["retrieval_sources"]:
+                entry["retrieval_sources"].append(source_name)
+            if source_name == "dense":
+                entry["dense_score"] = hit.get("score")
+                entry.setdefault("vector_score", hit.get("vector_score", hit.get("score")))
+            else:
+                entry["sparse_score"] = hit.get("score")
+                entry["matched_terms"] = hit.get("matched_terms", entry.get("matched_terms"))
+
+    fused_hits = list(fused.values())
+    fused_hits.sort(
+        key=lambda hit: (
+            float(hit.get("rrf_score", 0.0) or 0.0),
+            float(hit.get("dense_score", 0.0) or 0.0),
+            float(hit.get("sparse_score", 0.0) or 0.0),
+        ),
+        reverse=True,
+    )
+    for hit in fused_hits:
+        hit["score"] = float(hit.get("rrf_score", 0.0) or 0.0)
+    if max_results is not None:
+        return fused_hits[:max_results]
+    return fused_hits
+
+
+def _format_hit_for_log(hit: Dict[str, Any]) -> str:
+    title = hit.get("title") or hit.get("doc_title") or hit.get("doc_id") or "Unknown Document"
+    pages = hit.get("pages", "N/A")
+    score = float(hit.get("score", 0.0) or 0.0)
+    pieces = [f"score={score:.4f}", f"doc={title}", f"pages={pages}"]
+
+    if hit.get("retrieval_sources"):
+        pieces.append(f"sources={','.join(hit['retrieval_sources'])}")
+    if hit.get("dense_score") is not None:
+        pieces.append(f"dense={float(hit['dense_score']):.4f}")
+    if hit.get("sparse_score") is not None:
+        pieces.append(f"sparse={float(hit['sparse_score']):.4f}")
+    if hit.get("matched_terms"):
+        matched_terms = ", ".join(hit.get("matched_terms", [])[:4])
+        if matched_terms:
+            pieces.append(f"terms={matched_terms}")
+    return " | ".join(pieces)
+
+
+def _log_retrieval_stage(label: str, hits: List[Dict[str, Any]], limit: int = 5) -> None:
+    print(f"[retrieval] {label}: {len(hits or [])} hits")
+    for idx, hit in enumerate((hits or [])[:limit], start=1):
+        print(f"[retrieval]   {idx}. {_format_hit_for_log(hit)}")
+
+
+def _log_retrieval_breakdown(
+    *,
+    query: str,
+    retrieval_query: str,
+    keyword_hints: List[str],
+    dense_hits: List[Dict[str, Any]],
+    sparse_hits: List[Dict[str, Any]],
+    fused_hits: List[Dict[str, Any]],
+    final_hits: List[Dict[str, Any]],
+    label: str = "qa",
+) -> None:
+    print("=" * 110)
+    print(f"[retrieval] mode={label}")
+    print(f"[retrieval] question={query}")
+    print(f"[retrieval] retrieval_query={retrieval_query}")
+    print(f"[retrieval] keyword_hints={keyword_hints[:10]}")
+    _log_retrieval_stage("dense", dense_hits)
+    _log_retrieval_stage("sparse", sparse_hits)
+    _log_retrieval_stage("fused_rrf", fused_hits)
+    _log_retrieval_stage("final_after_rerank", final_hits)
 
 def _validate_json_payload(data: Any) -> bool:
     """
@@ -423,6 +526,7 @@ class ResponseGenerator:
 
         # Smart filter (match response_generator.py behavior)
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
+        retrieval_query = (filters.get("retrieval_query") or question).strip()
         normalized_query = (filters.get("normalized_query") or question).strip()
         rerank_query = _build_rerank_query(normalized_query, filters)
         keyword_hints = _build_keyword_hints(filters)
@@ -432,7 +536,7 @@ class ResponseGenerator:
 
         # 2) Retrieve (with filters)
         initial_k = rerank_top_k if self.use_reranker else top_k
-        retrieved_chunks = query_chunks(
+        dense_chunks = query_chunks(
             query_vec,
             top_k=initial_k,
             authority_names=filters.get("authority_names"),
@@ -441,6 +545,21 @@ class ResponseGenerator:
             min_effective_date=filters.get("min_effective_date"),
             max_effective_date=filters.get("max_effective_date"),
             keywords=keyword_hints,
+        )
+        sparse_chunks = query_chunks_sparse(
+            retrieval_query,
+            top_k=initial_k,
+            authority_names=filters.get("authority_names"),
+            doc_titles=filters.get("doc_titles"),
+            doc_types=filters.get("doc_types"),
+            min_effective_date=filters.get("min_effective_date"),
+            max_effective_date=filters.get("max_effective_date"),
+            keywords=keyword_hints,
+        )
+        retrieved_chunks = _fuse_ranked_hits_rrf(
+            dense_chunks,
+            sparse_chunks,
+            max_results=max(initial_k * 2, initial_k),
         )
 
         # 3) Rerank
@@ -455,6 +574,16 @@ class ResponseGenerator:
             )
 
         # 4) Deduplicate chunks based on (doc_id, chunk_id), then take top-k
+        _log_retrieval_breakdown(
+            query=question,
+            retrieval_query=retrieval_query,
+            keyword_hints=keyword_hints,
+            dense_hits=dense_chunks,
+            sparse_hits=sparse_chunks,
+            fused_hits=retrieved_chunks,
+            final_hits=retrieved_chunks[:top_k],
+            label="qa_json",
+        )
         if retrieved_chunks:
             seen_keys = set()
             final_chunks = []

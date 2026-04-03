@@ -7,6 +7,12 @@ import pandas as pd  # kept because it's used in the __main__ block
 from healthcare_rag_llm.graph_builder.neo4j_loader import Neo4jConnector
 from healthcare_rag_llm.embedding.HealthcareEmbedding import HealthcareEmbedding
 
+SPARSE_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+    "how", "in", "is", "it", "of", "on", "or", "should", "the", "to",
+    "today", "what", "when", "where", "which", "who", "why", "with",
+}
+
 
 def _normalize_keywords(keywords, max_items: int = 12) -> List[str]:
     if not keywords:
@@ -63,6 +69,48 @@ def _keyword_signal(result: Dict[str, Any], keywords: List[str]) -> Dict[str, fl
         "keyword_hits": float(keyword_hits),
         "keyword_score": float(keyword_score),
     }
+
+
+def _build_sparse_terms(
+    query_text: str,
+    keywords=None,
+    max_items: int = 16,
+) -> List[str]:
+    """
+    Build a lexical term list for sparse retrieval from both the raw query and
+    any LLM-derived keyword/theme hints.
+    """
+    terms = _normalize_keywords(keywords, max_items=max_items)
+    raw_query = " ".join(str(query_text or "").strip().lower().split())
+    if not raw_query:
+        return terms
+
+    for token in re.findall(r"[a-z0-9][a-z0-9/_-]*", raw_query):
+        if token in SPARSE_STOPWORDS or len(token) < 3:
+            continue
+        terms.append(token)
+        if len(terms) >= max_items:
+            break
+
+    deduped = []
+    seen = set()
+    for term in terms:
+        if term in seen:
+            continue
+        seen.add(term)
+        deduped.append(term)
+        if len(deduped) >= max_items:
+            break
+    return deduped
+
+
+def _chunk_relationship_types(include_table: bool, include_ocr: bool) -> List[str]:
+    rel_types = ["HAS_CHUNK"]
+    if include_table:
+        rel_types.append("HAS_TABLE")
+    if include_ocr:
+        rel_types.append("HAS_OCR")
+    return rel_types
 
 
 def _normalize_date_filter(
@@ -140,6 +188,7 @@ def query_chunks(
             doc_types_list = list(doc_types) if doc_types is not None else None
             doc_classes_list = list(doc_classes) if doc_classes is not None else None
             has_doc_class_filter = bool(doc_classes_list)
+            chunk_rel_types = _chunk_relationship_types(include_table, include_ocr)
 
             # Determine which chunk types to consider
             if include_table and include_ocr:
@@ -177,8 +226,8 @@ def query_chunks(
                 type_filter_condition = type_filter.replace("WHERE ", "", 1)
                 doc_filter_condition = doc_filter_where.replace("WHERE ", "", 1)
                 cypher = f"""
-                MATCH (a:Authority)-[:ISSUED]->(d:Document)-[:CONTAINS]->(p:Page)-[:HAS_CHUNK|HAS_TABLE|HAS_OCR]->(c:Chunk)
-                WHERE {type_filter_condition} AND {doc_filter_condition}
+                MATCH (a:Authority)-[:ISSUED]->(d:Document)-[:CONTAINS]->(p:Page)-[rel]->(c:Chunk)
+                WHERE type(rel) IN $chunk_rel_types AND {type_filter_condition} AND {doc_filter_condition}
                 WITH DISTINCT c, d, a
                 WITH c, d, a,
                      reduce(dot = 0.0, i IN range(0, size(c.denseEmbedding) - 1) |
@@ -221,7 +270,8 @@ def query_chunks(
                 MATCH (c:Chunk {{chunk_id: node.chunk_id}})
                 {type_filter}
                 // Step 3: Traverse to documents and authorities to get metadata for filtering
-                MATCH (p:Page)-[:HAS_CHUNK|HAS_TABLE|HAS_OCR]->(c)
+                MATCH (p:Page)-[rel]->(c)
+                WHERE type(rel) IN $chunk_rel_types
                 MATCH (p)<-[:CONTAINS]-(d:Document)<-[:ISSUED]-(a:Authority)
                 // Step 4: Filter by document/authority criteria (when filters are None, conditions evaluate to True)
                 {doc_filter_where}
@@ -253,6 +303,7 @@ def query_chunks(
                 "doc_titles": doc_titles_list,
                 "doc_types": doc_types_list,
                 "doc_classes": doc_classes_list,
+                "chunk_rel_types": chunk_rel_types,
                 "min_effective_date": _normalize_date_filter(min_effective_date),
                 "max_effective_date": _normalize_date_filter(max_effective_date),
             }
@@ -278,6 +329,126 @@ def query_chunks(
             ),
             reverse=True,
         )
+
+    return data[:top_k]
+
+
+def query_chunks_sparse(
+    query_text: str,
+    top_k: int = 5,
+    search_k: Optional[int] = None,
+    include_table: bool = True,
+    include_ocr: bool = True,
+    authority_names: Optional[Iterable[str]] = None,
+    doc_titles: Optional[Iterable[str]] = None,
+    doc_types: Optional[Iterable[str]] = None,
+    doc_classes: Optional[Iterable[str]] = None,
+    min_effective_date: Optional[Union[str, datetime, date]] = None,
+    max_effective_date: Optional[Union[str, datetime, date]] = None,
+    keywords=None,
+) -> List[Dict[str, Any]]:
+    """
+    Perform an independent sparse retrieval pass using lexical term matches over
+    chunk text and related document metadata.
+
+    This is intentionally separate from vector retrieval so the caller can later
+    fuse dense and sparse results in a controlled way.
+    """
+    sparse_terms = _build_sparse_terms(query_text, keywords=keywords)
+    if not sparse_terms:
+        return []
+
+    connector = Neo4jConnector()
+    try:
+        with connector.driver.session() as session:
+            authority_names_list = list(authority_names) if authority_names is not None else None
+            doc_titles_list = list(doc_titles) if doc_titles is not None else None
+            doc_types_list = list(doc_types) if doc_types is not None else None
+            doc_classes_list = list(doc_classes) if doc_classes is not None else None
+            chunk_rel_types = _chunk_relationship_types(include_table, include_ocr)
+
+            if include_table and include_ocr:
+                type_filter = "WHERE c.type IN ['text', 'table', 'ocr']"
+            elif include_table:
+                type_filter = "WHERE c.type IN ['text', 'table']"
+            elif include_ocr:
+                type_filter = "WHERE c.type IN ['text', 'ocr']"
+            else:
+                type_filter = "WHERE c.type = 'text'"
+
+            doc_filter_conditions = []
+            doc_filter_conditions.append("($authority_names IS NULL OR a.name IN $authority_names)")
+            doc_filter_conditions.append("($doc_titles IS NULL OR d.title IN $doc_titles)")
+            doc_filter_conditions.append("($doc_types IS NULL OR d.doc_type IN $doc_types)")
+            doc_filter_conditions.append("($doc_classes IS NULL OR d.doc_class IN $doc_classes)")
+            doc_filter_conditions.append("($min_effective_date IS NULL OR d.effective_date >= $min_effective_date)")
+            doc_filter_conditions.append("($max_effective_date IS NULL OR d.effective_date <= $max_effective_date)")
+
+            type_filter_condition = type_filter.replace("WHERE ", "", 1)
+            doc_filter_condition = " AND ".join(doc_filter_conditions)
+            if search_k is None:
+                search_k = max(top_k * 10, 100)
+
+            cypher = f"""
+            MATCH (a:Authority)-[:ISSUED]->(d:Document)-[:CONTAINS]->(p:Page)-[rel]->(c:Chunk)
+            WHERE type(rel) IN $chunk_rel_types AND {type_filter_condition} AND {doc_filter_condition}
+            WITH DISTINCT c, d, a,
+                 toLower(coalesce(c.text, '')) AS text_lc,
+                 toLower(coalesce(d.title, '')) AS title_lc,
+                 toLower(coalesce(d.doc_type, '')) AS doc_type_lc,
+                 toLower(coalesce(a.name, '')) AS authority_lc
+            WITH c, d, a, text_lc, title_lc, doc_type_lc, authority_lc,
+                 [term IN $terms
+                    WHERE text_lc CONTAINS term
+                       OR title_lc CONTAINS term
+                       OR doc_type_lc CONTAINS term
+                       OR authority_lc CONTAINS term] AS matched_terms
+            WHERE size(matched_terms) > 0
+            WITH c, d, a, matched_terms,
+                 reduce(score = 0.0, term IN matched_terms |
+                    score
+                    + CASE WHEN text_lc CONTAINS term THEN 1.0 ELSE 0.0 END
+                    + CASE WHEN title_lc CONTAINS term THEN 2.0 ELSE 0.0 END
+                    + CASE WHEN doc_type_lc CONTAINS term THEN 2.25 ELSE 0.0 END
+                    + CASE WHEN authority_lc CONTAINS term THEN 1.75 ELSE 0.0 END
+                 ) AS sparse_score
+            RETURN
+                c.chunk_id        AS chunk_id,
+                c.text            AS text,
+                c.type            AS chunk_type,
+                d.doc_id          AS doc_id,
+                d.title           AS title,
+                d.url             AS url,
+                d.doc_type        AS doc_type,
+                d.category        AS category,
+                d.doc_class       AS doc_class,
+                d.effective_date  AS effective_date,
+                a.name            AS authority,
+                c.pages           AS pages,
+                sparse_score      AS score,
+                sparse_score      AS sparse_score,
+                size(matched_terms) AS keyword_hits,
+                matched_terms     AS matched_terms
+            ORDER BY score DESC, keyword_hits DESC
+            LIMIT $search_k
+            """
+
+            params = {
+                "terms": sparse_terms,
+                "search_k": search_k,
+                "authority_names": authority_names_list,
+                "doc_titles": doc_titles_list,
+                "doc_types": doc_types_list,
+                "doc_classes": doc_classes_list,
+                "chunk_rel_types": chunk_rel_types,
+                "min_effective_date": _normalize_date_filter(min_effective_date),
+                "max_effective_date": _normalize_date_filter(max_effective_date),
+            }
+
+            result = session.run(cypher, params)
+            data = result.data()
+    finally:
+        connector.close()
 
     return data[:top_k]
 
