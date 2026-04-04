@@ -557,7 +557,7 @@ def _build_recency_summary(retrieved_docs_grouped):
 
 def format_compare_tables(sections, retrieved_docs_grouped=None):
     """Render compare definitions result as headline + 2 HTML tables + caveats."""
-    headline = html.escape(sections.get("headline_summary", ""))
+    headline_raw = sections.get("headline_summary", "")
     aligned_pairs = sections.get("aligned_pairs", []) or []
     policy_def = sections.get("policy_definition", [])
     provider_def = sections.get("provider_manual_definition", [])
@@ -636,8 +636,12 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
         
         def _replace_citation(match):
             cite = match.group(1).strip()
+            # Keep already-numbered citations as-is to avoid stripping them.
+            if re.fullmatch(r"\d{1,3}", cite):
+                return f" [{cite}]"
             if not _is_valid_citation_text(cite):
-                return ""
+                # Do not drop unknown citation tokens; dropping can leave broken tails like "or ."
+                return match.group(0)
             if cite not in citation_to_num:
                 citation_to_num[cite] = len(citation_order) + 1
                 citation_order.append(cite)
@@ -661,9 +665,25 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
             f"<li>{_normalize_text_with_inline_numbers(item)}</li>" for item in items
         )
 
+    headline = _normalize_text_with_inline_numbers(headline_raw)
+    # Final headline cleanup to avoid dangling connector tails after citation normalization.
+    headline = re.sub(r"\s+([.,;:!?])", r"\1", headline).strip()
+    headline = re.sub(
+        r"\b(?:and|or|for|with|including)\s*(?:\[\d+\])?\s*([.,;:!?])\s*$",
+        r"\1",
+        headline,
+        flags=re.IGNORECASE,
+    )
+    headline = re.sub(
+        r"\b(?:and|or|for|with|including)\s*(?:\[\d+\])?\s*$",
+        "",
+        headline,
+        flags=re.IGNORECASE,
+    ).strip()
+
     if aligned_pairs:
         row_html = []
-        for pair in aligned_pairs:
+        for _, pair in enumerate(aligned_pairs, start=1):
             provider_text = pair.get("provider_manual", "") or "No grounded provider manual evidence was available for this point."
             policy_text = pair.get("policy_update", "") or "No closely matching policy evidence was available for this provider-manual point."
             row_html.append(

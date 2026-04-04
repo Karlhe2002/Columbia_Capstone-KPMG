@@ -709,7 +709,6 @@ Formatting requirements (strict):
         # For compare mode, keep chunk text intact so the model does not see chopped evidence mid-sentence.
         policy_context = self._format_chunks(policy_ordered, compact_text=False)
         provider_context = self._format_chunks(provider_manual_ordered, compact_text=False)
-        recency_brief = self._build_compare_recency_brief(policy_ordered, provider_manual_ordered)
         target_concept = resolved_concept or "the requested concept"
 
         user_msg = f"""
@@ -727,100 +726,49 @@ Provider Manual Context Chunks (authoritative; cite only these):
 
 Chunks format:
 [Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[Effective Date: <effective_date or N/A>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
-Use the provided Effective Date metadata to determine which grounded source is more recent.
 
-{recency_brief}
-
-Output as a valid JSON object with exactly these keys:
+Return ONLY one valid JSON object with exactly these keys:
 {{
-  "headline_summary": "1-2 sentence summary comparing both sources and clearly surfacing which source is more recent when supported by dates",
+  "headline_summary": "1 to 3 complete sentences that directly answer the user's question",
   "aligned_pairs": [
-    {{"provider_manual": "Provider-manual bullet 1 with inline citations", "policy_update": "Policy bullet 1 that responds to the same sub-topic with inline citations [doc_title:page - date]"}},
-    {{"provider_manual": "Provider-manual bullet 2", "policy_update": "Policy bullet 2"}}
+    {{"provider_manual": "Complete sentence with one provider-manual citation", "policy_update": "Complete sentence for the same point"}}
   ],
-  "similarities": ["similarity point 1 with citation", "similarity point 2"],
-  "differences": ["difference point 1 with citation", "difference point 2"],
-  "caveats": "Any caveats, or null if none"
+  "similarities": ["Complete sentence similarity"],
+  "differences": ["Complete sentence difference"],
+  "caveats": "Complete sentence caveat, or null if none"
 }}
 Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
-Each field must have inline citations like [doc_title or doc_title:page — Mon DD, YYYY].
-Use one date format everywhere in the output: Mon DD, YYYY.
-If source metadata appears as YYYY-MM-DD, convert it to Mon DD, YYYY before writing the answer.
-Comparison requirements:
-- In "headline_summary", answer the user's question directly and make the recency conclusion explicit.
-- Use clear wording such as "According to the newest policy source dated ..." or "According to the newest provider manual source dated ...".
-- Explicitly state the newest relevant policy date and the newest relevant provider manual date when available.
-- Clearly say which source type is more up to date overall for this issue.
-- Put the most effort on the recency briefing above when deciding which source should guide the user now.
-- If the provider manual is more recent, say so in the headline summary and explain that it should receive more weight by default.
-- If policy is more recent, say so in the headline summary and explain that it should receive more weight by default.
-- If dates are missing or unclear, say that explicitly instead of guessing.
-- Never output chopped or partial-looking evidence fragments; if the support is incomplete, describe it as partial rather than ending mid-phrase.
-- If the user explicitly asks about a historical period, honor that instead of defaulting to the newest source.
-- Do not use "insufficient evidence" as a default fallback when a weaker but still grounded source-based statement is possible.
-- "aligned_pairs" must be an array of row-by-row comparison objects, not two independent lists.
-- Return at least 2 aligned rows whenever the retrieved evidence supports 2 or more distinct grounded points.
-- Usually return 3 to 4 aligned rows, not more, unless the evidence clearly requires an extra row.
-- Do not collapse multiple grounded points into one long row if they can be separated into shorter rows.
-- The provider manual side is the anchor for the row structure.
-- Only create a row when the provider manual side has a real grounded point to anchor that row.
-- If a provider-manual candidate is too weak, indirect, or generic to stand on its own, skip that row instead of writing "insufficient evidence" on the left.
-- Row 1 must start from the newest relevant provider-manual source.
-- Later rows may move to the next most relevant grounded provider-manual sources in descending recency/relevance order.
-- For each row, "policy_update" must respond to the same sub-topic as "provider_manual".
-- Do NOT make the policy side simply a newest-to-oldest policy list.
-- Do not introduce a new policy topic in a row unless it directly responds to the provider-manual text in that same row.
-- If the newest provider-manual source is too general or insufficient to answer fully, say that in row 1 and then use later rows for the next most relevant grounded provider-manual evidence.
-- If there is no closely matching policy evidence for a given provider-manual row, say that explicitly in "policy_update" for that same row.
-- Keep each row concise and source-based: one provider-manual point paired with one policy response point.
-- Each row must cover exactly one grounded sub-topic.
-- Each side of a row should usually be 1 sentence and should not exceed 2 sentences.
-- Prefer several short rows over one long row.
-- Do not write paragraph-style bullets.
-- If one row starts listing multiple operational rules, split them into separate rows when grounded evidence allows.
-- Prioritize rows that directly answer the user's question about current billing guidance.
-- Do not create filler rows for marginal side topics just because they appear in the retrieved chunks.
-- Skip low-value rows that are only weakly related to the user's question.
-- If there are many possible rows, keep only the strongest and most relevant 3 to 4 rows.
-- For the provider_manual field, prefer a concise partial grounded statement over "insufficient evidence" whenever any meaningful provider-manual guidance can be extracted.
-- Use "insufficient evidence" in provider_manual only if there is truly no meaningful provider-manual point available for the entire comparison.
-- For the policy_update field, prefer a partial grounded response over "insufficient evidence" whenever any matching policy guidance exists.
-- Only say "insufficient evidence" when the retrieved chunks truly do not support a meaningful grounded statement for that side of that row.
-- If the evidence is partial, limited, or indirect, say that it is partial/limited/indirect and then give the grounded analysis that is still possible.
-- Do not create a row whose main purpose is only to say "insufficient evidence" if stronger rows already answer the user's question.
-- Use an "insufficient evidence" row only when that gap is important to the user's question and there is no stronger grounded row to show instead.
-- If a row would be "insufficient evidence" on the provider-manual side but there are other stronger provider-manual rows available, drop that row.
-- Strict ordering rule: always start each field with the newest relevant evidence for that source type.
-- Strict ordering rule: do not lead with older evidence when newer evidence exists for the same point.
-- Strict ordering rule: mention older evidence only after the newest evidence has already been stated.
-- Strict ordering rule: if older and newer evidence conflict, lead with the newer evidence and frame the older evidence as background or superseded context.
-Internal decision process:
-- Identify the newest relevant provider manual chunk by Effective Date.
-- Build the aligned rows from the provider-manual side first, starting from the newest relevant provider-manual source.
-- For each provider-manual row, find the policy chunk or policy chunks that most directly address the same sub-point, even if that policy evidence is older than the newest policy chunk overall.
-- Only use the newest policy chunk first when it is also the most relevant match for that provider-manual row.
-- Before writing the final JSON, break the provider-manual evidence into a short ordered list of distinct sub-topics.
-- Then create one aligned row per sub-topic.
-- If an aligned row grows beyond 2 sentences on either side, split it into multiple rows.
-- Rank candidate rows by direct usefulness for answering the user's actual question.
-- Keep the most relevant rows and discard weak or repetitive candidates.
-- Remove candidate rows whose provider-manual side is too generic, too weak, or would mainly say "insufficient evidence".
-- Prefer a grounded partial comparison over an "insufficient evidence" statement whenever at least one meaningful grounded point can be made.
-- In row 1, "provider_manual" must lead with the newest provider-manual evidence.
-- In row 1, "policy_update" must be the policy evidence that best matches provider-manual row 1, not automatically the newest policy evidence overall.
-- After drafting the rows, verify row by row that "provider_manual" and "policy_update" discuss the same sub-topic.
-- If a policy row does not match the provider-manual row in the same position, rewrite it or replace it with an explicit "no closely matching policy evidence" statement.
-- Final self-check before returning JSON:
-- Does each row represent only one sub-topic?
-- Are there any rows that should be split because they contain multiple distinct policy or billing rules?
-- Are there too many rows?
-- Are any rows weak, repetitive, or only loosely relevant to the user's question?
-- Does any left-side row mainly say "insufficient evidence" even though another concrete provider-manual row could be shown instead?
-- If yes, delete that weak left-side row.
-- If yes, remove those rows and keep the strongest 3 to 4.
-- If yes, split them before returning the JSON.
-- In "headline_summary", the first cited evidence must come from the newest source type overall when that can be determined.
-- Use older evidence only as background or to explain differences.
+Priority order (highest to lowest):
+1) Sentence completeness
+2) Row alignment quality
+3) Grounding and citations
+4) Number of rows
+
+Sentence rules:
+- Every textual field must be complete sentence(s) with proper punctuation.
+- Do not end mid-word, mid-phrase, or with dangling connectors.
+- Do not use clipped abbreviations (for example, "serv.", "organizat.", "pharm.").
+- If evidence is partial, state that in a complete sentence.
+
+Headline rules:
+- headline_summary must be 1 to 3 complete sentences and directly answer the question.
+- Keep it high-level; do not summarize every row.
+- Recency is shown by the deterministic source-signal banner; mention recency only if the user explicitly asks.
+
+Row rules:
+- aligned_pairs must contain 1 to 4 rows based on evidence strength; do not force weak extra rows.
+- Build rows from provider-manual evidence first, newest to oldest.
+- Row 1 must use the most recent provider-manual chunk (by effective date among retrieved provider-manual chunks).
+- One row must correspond to one provider-manual source chunk.
+- provider_manual must use exactly one provider-manual citation for that row.
+- policy_update must address the same point and either confirm, contrast, or state no close policy match.
+- A valid match must share at least one specific anchor detail (service type, code family, member group, or billing pathway). Generic overlap words do not count as a match.
+- If no close policy match exists, policy_update must explicitly say so.
+- Do not create policy-only rows or switch to a different scenario/context within a row.
+
+Citation rules:
+- Substantive claims should include inline citations when available.
+- Citation style: [doc_title or doc_title:page - date].
 """.strip()
 
         messages = self._compose_messages(user_msg=user_msg, system_prompt=self.compare_system_prompt)
