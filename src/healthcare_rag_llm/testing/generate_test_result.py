@@ -240,5 +240,6 @@ class RAGBatchTester:
         )
 
 if __name__ == "__main__":
-    tester = RAGBatchTester()
+    # Explicitly request 5 repeats per question when run as a script
+    tester = RAGBatchTester(repeats=5)
     tester.run()
