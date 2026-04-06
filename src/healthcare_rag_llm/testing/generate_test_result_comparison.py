@@ -73,7 +73,7 @@ class RAGComparisonBatchTester:
             )
         )
         
-        self.filter_extractor = build_filter_extractor()
+        self.filter_extractor = build_filter_extractor(llm_client=self.llm_client)
         self.response_generator = ResponseGenerator(
             llm_client=self.llm_client,
             use_reranker=self.use_reranker,
