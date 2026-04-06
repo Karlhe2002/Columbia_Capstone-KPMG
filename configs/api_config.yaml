@@ -27,7 +27,7 @@ api_providers:
   
 
 # Default API configuration
-default_provider: "ollama"
+default_provider: "gemini"
 
 # Model configuration
 models:
