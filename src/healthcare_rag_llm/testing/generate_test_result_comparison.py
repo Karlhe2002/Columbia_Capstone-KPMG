@@ -67,9 +67,9 @@ class RAGComparisonBatchTester:
             llm_client
             if llm_client is not None
             else LLMClient(
-                api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"),
-                provider="gemini",
-                model="gemini-2.5-flash",
+                api_key="",
+                provider="ollama",
+                model="llama3.2:3b",
             )
         )
         

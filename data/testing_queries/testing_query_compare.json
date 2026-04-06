@@ -1,0 +1,62 @@
+﻿{
+  "Test_query_compare_1": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_2": {
+    "question": "How do Medicaid and provider manual guidance define primary payer responsibility for dual-eligible pharmacy claims?",
+    "concept": "primary payer responsibility for dual-eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_3": {
+    "question": "What are the differences between Medicaid policy and provider manual guidance on co-payment responsibility for dual-eligible members?",
+    "concept": "co-payment responsibility for dual-eligible members",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_4": {
+    "question": "How do Medicaid and provider manual guidance differ in handling Medicare Part D-excluded drugs?",
+    "concept": "handling Medicare Part D-excluded drugs",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_5": {
+    "question": "Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.",
+    "concept": "when a pharmacy must bill Medicaid before billing Medicare",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_6": {
+    "question": "For crossover claims, what are the requirements for prior approval after Medicaid payment?",
+    "concept": "crossover claims prior approval after Medicaid payment",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_7": {
+    "question": "What are the requirements for Coordination of Benefits (COB)?",
+    "concept": "coordination of benefits requirements",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_8": {
+    "question": "What responsibilities do pharmacists have when required patient or prescriber information is missing?",
+    "concept": "pharmacist responsibilities when required patient or prescriber information is missing",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_9": {
+    "question": "Are weight loss drugs an excluded benefit?",
+    "concept": "weight loss drugs excluded benefit status",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_10": {
+    "question": "How are the 340B drugs reimbursed?",
+    "concept": "340B drugs reimbursement",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_11": {
+    "question": "How are home infusion drugs covered, and who is responsible for billing",
+    "concept": "home infusion drugs coverage and billing responsibilities",
+    "task_type": "compare_definition"
+  },
+  "Test_query_compare_12": {
+    "question": "How is naloxone reimbursed?",
+    "concept": "naloxone reimbursement",
+    "task_type": "compare_definition"
+  }
+}
