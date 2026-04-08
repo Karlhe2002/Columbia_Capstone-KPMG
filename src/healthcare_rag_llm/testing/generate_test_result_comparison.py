@@ -51,7 +51,7 @@ class RAGComparisonBatchTester:
         version_id: str = "comparison_version_undefine",
         llm_client: Optional[LLMClient] = None,
         top_k_per_source: int = 3,
-        repeats: int = 3,
+        repeats: int = 5,
         rerank_top_k: int = 20,
         use_reranker: bool = True,
     ) -> None:
