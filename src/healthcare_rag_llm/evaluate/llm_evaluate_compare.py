@@ -89,6 +89,19 @@ def _parse_json_response(
         }
 
 
+def _remove_schema_fields(value: Any) -> Any:
+    """Recursively remove all `schema` keys from nested dict/list structures."""
+    if isinstance(value, dict):
+        return {
+            k: _remove_schema_fields(v)
+            for k, v in value.items()
+            if k != "schema"
+        }
+    if isinstance(value, list):
+        return [_remove_schema_fields(item) for item in value]
+    return value
+
+
 def _to_string_list(value: Any) -> List[str]:
     """Normalize a value into a list[str]."""
     if value is None:
@@ -749,8 +762,9 @@ def evaluate_compare_test_results(
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     print(f"\nSaving evaluation results to: {output_path}")
+    output_payload = _remove_schema_fields(evaluation_results)
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(evaluation_results, f, indent=2, ensure_ascii=False)
+        json.dump(output_payload, f, indent=2, ensure_ascii=False)
 
     print("\n" + "=" * 60)
     print("COMPARE DEFINITIONS EVALUATION SUMMARY")
