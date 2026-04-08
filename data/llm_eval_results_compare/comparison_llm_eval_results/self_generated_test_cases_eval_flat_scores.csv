@@ -1,0 +1,31 @@
+test_id,query,policy_faithfulness,policy_answer_relevance,policy_correctness,provider_faithfulness,provider_answer_relevance,provider_correctness,query_alignment,accuracy_sim,accuracy_diff,completeness,balance,comparison_overall_score,overall_score
+test_id_1,Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.,1,0.8,,1,0.8,,0.8,0.7,0.8,0.7,0.7,0.757,0.8
+test_id_2,Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.,0.8,0.8,,1,0.8,,0.8,0.8,0.8,0.7,0.7,0.765,0.79
+test_id_3,Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.,0.8,0.7,,1,0.8,,0.8,0.8,0.7,0.7,0.7,0.757,0.777
+test_id_4,Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.,0.3,0.8,,1,0.8,,0.8,0.7,0.8,0.7,0.8,0.762,0.751
+test_id_5,Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.,0.3,0.8,,1,0.8,,0.8,0.7,0.8,0.8,0.7,0.787,0.768
+test_id_6,Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.,0.5,0.8,,1,0.8,,0.8,0.7,0.7,0.7,0.8,0.755,0.761
+test_id_7,"For crossover claims, what are the requirements for prior approval after Medicaid payment?",0.8,0.8,,0.8,0.7,,0.8,0.7,0.7,0.7,0.8,0.755,0.761
+test_id_8,"For crossover claims, what are the requirements for prior approval after Medicaid payment?",0.8,0.8,,0.5,0.8,,0.8,0.7,0.8,0.7,0.7,0.757,0.747
+test_id_9,"For crossover claims, what are the requirements for prior approval after Medicaid payment?",0.8,0.8,,0.8,0.8,,0.8,0.7,0.8,0.7,0.8,0.762,0.773
+test_id_10,Describe pharmacy responsibilities for coordination of benefits.,1,0.9,,0.8,0.8,,0.8,0.8,0.4,0.7,0.9,0.745,0.784
+test_id_11,Describe pharmacy responsibilities for coordination of benefits.,1,0.9,,0.9,0.8,,0.8,0.8,0.6,0.7,0.8,0.755,0.798
+test_id_12,Describe pharmacy responsibilities for coordination of benefits.,1,0.8,,0.9,0.8,,0.8,0.9,0.4,0.7,0.8,0.748,0.786
+test_id_13,"Compare Medicaid policy versus provider manual for coinsurance, deductibles, and balance billing for dual eligible members.",0.3,0.8,,0.8,0.8,,0.5,0.8,0.4,0.4,0.4,0.48,0.538
+test_id_14,"Compare Medicaid policy versus provider manual for coinsurance, deductibles, and balance billing for dual eligible members.",0.5,0.5,,0.5,0.8,,0.5,0.9,0.2,0.4,0.1,0.458,0.493
+test_id_15,"Compare Medicaid policy versus provider manual for coinsurance, deductibles, and balance billing for dual eligible members.",0.3,0.3,,0.5,0.5,,0.8,0.9,0.7,0.4,0.4,0.66,0.582
+test_id_16,How do Medicaid and provider manuals address Part D drug coverage exclusions and secondary coverage?,0.5,0.5,,0.7,0.7,,0.8,0.8,0.7,0.8,0.8,0.792,0.734
+test_id_17,How do Medicaid and provider manuals address Part D drug coverage exclusions and secondary coverage?,0.8,0.5,,1,0.8,,0.8,0.8,0.6,0.7,0.8,0.755,0.761
+test_id_18,How do Medicaid and provider manuals address Part D drug coverage exclusions and secondary coverage?,0.8,0.8,,0.7,0.5,,0.8,0.8,0.7,0.7,0.8,0.762,0.743
+test_id_19,"How are home infusion drugs covered, and who is responsible for billing",0.8,0.9,,1,0.8,,0.8,0.8,0.9,0.8,0.8,0.808,0.828
+test_id_20,"How are home infusion drugs covered, and who is responsible for billing",1,0.9,,1,0.8,,0.8,0.9,0.7,0.8,0.8,0.8,0.837
+test_id_21,"How are home infusion drugs covered, and who is responsible for billing",1,0.9,,1,0.8,,0.9,0.8,0.9,0.8,0.9,0.862,0.881
+test_id_22,"For Part B, how should billing be handled for medical supplies or drugs related to DME?",0.8,0.9,,1,0.5,,0.5,0.6,0.5,0.4,0.7,0.487,0.581
+test_id_23,"For Part B, how should billing be handled for medical supplies or drugs related to DME?",0.9,0.9,,1,0.5,,0.5,0.4,0.2,0.6,0.6,0.505,0.601
+test_id_24,"For Part B, how should billing be handled for medical supplies or drugs related to DME?",0.7,0.8,,1,0.7,,0.5,0.5,0.2,0.6,0.6,0.512,0.598
+test_id_25,"If a drug is covered by Medicare but limited or excluded under Medicaid pharmacy benefits, how should it be billed?",1,0.9,,0.5,0.3,,0.5,0.7,0.4,0.7,0.7,0.578,0.607
+test_id_26,"If a drug is covered by Medicare but limited or excluded under Medicaid pharmacy benefits, how should it be billed?",1,0.9,,0.3,0.3,,0.7,0.8,0.4,0.6,0.8,0.66,0.649
+test_id_27,"If a drug is covered by Medicare but limited or excluded under Medicaid pharmacy benefits, how should it be billed?",1,0.9,,0.5,0.3,,0.8,0.8,0.4,0.4,0.7,0.645,0.654
+test_id_28,What responsibilities do pharmacists have when required patient or prescriber information is missing,1,0.8,,0.8,0.5,,0.5,0.4,0.9,0.4,0.4,0.488,0.574
+test_id_29,What responsibilities do pharmacists have when required patient or prescriber information is missing,1,0.8,,0.8,0.5,,0.5,0.4,0.2,0.4,0.4,0.435,0.537
+test_id_30,What responsibilities do pharmacists have when required patient or prescriber information is missing,1,0.8,,0.8,0.3,,0.5,0.4,0.4,0.4,0.5,0.455,0.536
