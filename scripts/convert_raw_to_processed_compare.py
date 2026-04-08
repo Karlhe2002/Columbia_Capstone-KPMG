@@ -2,7 +2,8 @@
 """
 .venv/bin/python scripts/convert_raw_to_processed_compare.py \
   -i data/llm_eval_results_compare/comparison_raw/input_file.json \
-  -o data/llm_eval_results_compare/comparison_processed/input_file_processed.json
+    -o data/llm_eval_results_compare/comparison_processed/input_file_processed.json \
+    -g "data/llm_eval_results_compare/Q&A_ground_truth.csv"
 """
 
 """
@@ -452,6 +453,7 @@ def main() -> int:
     parser.add_argument("-i", "--input_json", required=True, help="Path to source JSON")
     parser.add_argument("-o", "--output_json", required=True, help="Path to converted JSON")
     parser.add_argument(
+        "-g",
         "--ground_truth_csv",
         default=None,
         help="Optional path to a CSV with Query,Answer columns for adding ground_truth.",
