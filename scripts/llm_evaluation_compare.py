@@ -8,9 +8,11 @@ Input fields: question, concept, compare_sections, retrieved_docs. For format_co
 (LLM raw output schema check), include "answer" with the raw LLM generation before parse.
 
 Usage:
-# TODO: waiting for the testing data to check correctness. refer to llm_evaluate_compare.py
-# /Users/sqtang37/Desktop/Columbia_Capstone-KPMG/.venv/bin/python scripts/llm_evaluation_compare.py -t data/comparison_llm_eval_cases/self_generated_test_cases.json -o data/comparison_llm_eval_results/self_generated_test_cases_eval.json --provider openai_official --model gpt-4o-mini 
-# --limit 1
+.venv/bin/python scripts/llm_evaluation_compare.py \
+-t data/llm_eval_results_compare/comparison_processed/input.json \
+-o data/llm_eval_results_compare/comparison_llm_eval_results/output.json \
+--provider openai_official --model gpt-4o-mini \
+--limit 1
 """
 
 import argparse
@@ -30,7 +32,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-        """,   # TODO: waiting for the testing data. refer to llm_evaluate_compare.py
+        """,   # XXX: waiting for the testing data. refer to llm_evaluate_compare.py
     )
 
     parser.add_argument("-t", "--test_results", required=True, help="Path to compare_definitions test results JSON")

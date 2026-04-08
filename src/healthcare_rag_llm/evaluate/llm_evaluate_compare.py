@@ -26,7 +26,28 @@ def _derive_score_from_fields(data: Dict[str, Any], fields: List[str]) -> Option
         if key not in data:
             continue
         try:
-            vals.append(_clamp_score(data[key]))
+            value = data[key]
+            # Support both flat numeric values and nested metric objects: {"score": ...}.
+            if isinstance(value, dict) and "score" in value:
+                vals.append(_clamp_score(value["score"]))
+            else:
+                vals.append(_clamp_score(value))
+        except (TypeError, ValueError):
+            continue
+    if not vals:
+        return None
+    return round(sum(vals) / len(vals), 3)
+
+
+def _derive_section_metric_score(section: Dict[str, Any], fields: List[str]) -> Optional[float]:
+    """Compute mean score from section metrics like {metric: {score: ...}}."""
+    vals: List[float] = []
+    for key in fields:
+        metric_obj = section.get(key)
+        if not isinstance(metric_obj, dict) or "score" not in metric_obj:
+            continue
+        try:
+            vals.append(_clamp_score(metric_obj["score"]))
         except (TypeError, ValueError):
             continue
     if not vals:
@@ -116,6 +137,14 @@ def _normalize_retrieved_chunks(raw_chunks: Any) -> List[Dict[str, Any]]:
     return normalized
 
 
+def _non_empty_text(value: Any) -> Optional[str]:
+    """Return stripped text when non-empty, otherwise None."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text if text else None
+
+
 def _evaluate_query_alignment(
     llm_client: LLMClient,
     query: str,
@@ -175,13 +204,15 @@ def _evaluate_compare_quality(
     concept: str,
     similarities: List[str],
     differences: List[str],
+    comparison_items: List[str],
     policy_chunks: List[Dict[str, Any]],
     provider_chunks: List[Dict[str, Any]],
+    compare_ground_truth: Optional[str],
     include_correctness: bool,
 ) -> Dict[str, Any]:
     """
-    Single-function evaluation for comparison quality against chunks,
-    using separated similarity/difference accuracy scores.
+    Multi-pass evaluation for comparison quality against chunks,
+    where each metric is scored in a separate LLM call.
     """
     target = concept or "the requested concept"
 
@@ -196,12 +227,139 @@ def _evaluate_compare_quality(
         for i, chunk in enumerate(provider_chunks[:5])
     ) if provider_chunks else "(no provider chunks)"
 
-    correctness_task = "3. CORRECTNESS: Are claims factually correct given query and source chunks?" if include_correctness else ""
-    completeness_idx = 4 if include_correctness else 3
-    balance_idx = 5 if include_correctness else 4
-    correctness_json = '    "correctness": <float between 0 and 1>,\n' if include_correctness else ""
+    combined_accuracy_mode = len(comparison_items) == 1 and bool(comparison_items[0].strip())
+    comparison_text = comparison_items[0].strip() if combined_accuracy_mode else ""
 
-    prompt = f"""You are an expert evaluator assessing comparison quality in ONE pass.
+    combined_accuracy_result: Optional[Dict[str, Any]] = None
+    if combined_accuracy_mode:
+        prompt = f"""You are an expert evaluator assessing TWO related metrics for comparison quality.
+
+QUERY:
+{query}
+
+TARGET CONCEPT:
+{target}
+
+COMPARISON PARAGRAPH:
+{comparison_text}
+
+POLICY SOURCE CHUNKS (excerpts):
+{policy_ctx}
+
+PROVIDER MANUAL SOURCE CHUNKS (excerpts):
+{provider_ctx}
+
+TASK:
+Evaluate the paragraph-style comparison and score BOTH metrics separately:
+- accuracy_sim: whether similarity claims are directly supported by evidence.
+- accuracy_diff: whether difference claims are directly supported by evidence.
+
+Score band guidance:
+- 0.9-1.0: Fully supported and well grounded.
+- 0.7-0.8: Mostly supported with minor issues.
+- 0.4-0.6: Partially supported with notable gaps.
+- 0.1-0.3: Largely unsupported.
+- 0.0: No valid support.
+
+Respond in JSON format:
+{{
+    "accuracy_sim": {{
+        "score": <float between 0 and 1>,
+        "schema": "similarity_grounding",
+        "reason": "<brief reason for similarity grounding>"
+    }},
+    "accuracy_diff": {{
+        "score": <float between 0 and 1>,
+        "schema": "difference_grounding",
+        "reason": "<brief reason for difference grounding>"
+    }},
+    "reason": "<brief combined reason>"
+}}"""
+        combined_resp = llm_client.chat(prompt)
+        combined_accuracy_result = _parse_json_response(
+            combined_resp,
+            "compare_quality_accuracy",
+            require_score=False,
+            fallback={
+                "accuracy_sim": {"score": 0.0, "schema": "similarity_grounding", "reason": "Failed to evaluate accuracy_sim"},
+                "accuracy_diff": {"score": 0.0, "schema": "difference_grounding", "reason": "Failed to evaluate accuracy_diff"},
+                "reason": "Failed to evaluate combined accuracy metrics",
+            },
+        )
+
+    metric_specs: List[Dict[str, str]] = [
+        {
+            "key": "accuracy_sim",
+            "schema": "similarity_grounding",
+            "task": "Score only whether similarity claims are directly supported by evidence.",
+        },
+        {
+            "key": "accuracy_diff",
+            "schema": "difference_grounding",
+            "task": "Score only whether difference claims are directly supported by evidence.",
+        },
+        {
+            "key": "completeness",
+            "schema": "coverage_completeness",
+            "task": "Score whether major expected similarities/differences are missing.",
+        },
+        {
+            "key": "balance",
+            "schema": "cross_source_balance",
+            "task": "Score whether BOTH sources are represented and grounded without one-sided emphasis or one-sided hallucination.",
+        },
+    ]
+    if include_correctness:
+        metric_specs.append(
+            {
+                "key": "correctness",
+                "schema": "factual_correctness",
+                "task": "Score factual correctness against query and source evidence; ignore writing style.",
+            }
+        )
+
+    result: Dict[str, Any] = {
+        "reasoning": "",
+    }
+    metric_reasons: List[str] = []
+
+    if combined_accuracy_result is not None:
+        for metric_key, metric_schema in [("accuracy_sim", "similarity_grounding"), ("accuracy_diff", "difference_grounding")]:
+            metric_obj = combined_accuracy_result.get(metric_key, {})
+            if not isinstance(metric_obj, dict):
+                metric_obj = {}
+            score_val = metric_obj.get("score", 0.0)
+            try:
+                score_val = _clamp_score(score_val)
+            except (TypeError, ValueError):
+                score_val = 0.0
+            normalized_metric = {
+                "score": score_val,
+                "schema": str(metric_obj.get("schema", metric_schema)),
+                "reason": str(metric_obj.get("reason", "")),
+            }
+            result[metric_key] = normalized_metric
+            if normalized_metric["reason"]:
+                metric_reasons.append(f"{metric_key}: {normalized_metric['reason']}")
+
+    for spec in metric_specs:
+        metric_key = spec["key"]
+        metric_schema = spec["schema"]
+        metric_task = spec["task"]
+
+        # Single-paragraph comparisons already produced both accuracy scores above.
+        # Skip the per-metric calls in that case so we do not duplicate work.
+        if combined_accuracy_mode and metric_key in {"accuracy_sim", "accuracy_diff"}:
+            continue
+
+        correctness_reference = ""
+        if metric_key == "correctness" and compare_ground_truth:
+            correctness_reference = f"""
+    GROUND TRUTH ANSWER FOR COMPARISON CORRECTNESS:
+    {compare_ground_truth}
+    """
+
+        prompt = f"""You are an expert evaluator assessing ONE metric for comparison quality.
 
 QUERY:
 {query}
@@ -221,45 +379,59 @@ POLICY SOURCE CHUNKS (excerpts):
 PROVIDER MANUAL SOURCE CHUNKS (excerpts):
 {provider_ctx}
 
-TASK:
-Evaluate the quality of the similarities and differences in the summary in a single step. Consider:
-1. ACCURACY_SIM: Are the similarities supported by source chunks?
-2. ACCURACY_DIFF: Are the differences supported by source chunks?
-{correctness_task}
-{completeness_idx}. COMPLETENESS: Are major similarities or differences missing?
-{balance_idx}. BALANCE: Is the comparison balanced across sources?
+{correctness_reference}
 
-Rate the compare quality on a scale of 0.0 to 1.0:
-- 1.0: Similarities and differences are accurate, well-grounded, and complete
-- 0.8-0.9: Minor inaccuracies or omissions
-- 0.5-0.7: Some similarities/differences unsupported or incorrect
-- 0.3-0.4: Significant errors or omissions
-- 0.0-0.2: Largely inaccurate or ungrounded
+METRIC TO EVALUATE:
+- metric_name: {metric_key}
+- schema: {metric_schema}
+- instruction: {metric_task}
+
+Score band guidance:
+- 0.9-1.0: Fully satisfies this metric schema with strong grounding.
+- 0.7-0.8: Mostly satisfies schema with minor issues.
+- 0.4-0.6: Partially satisfies schema with notable gaps.
+- 0.1-0.3: Largely fails schema.
+- 0.0: No valid support for this metric.
 
 Respond in JSON format:
 {{
-    "accuracy_sim": <float between 0 and 1>,
-    "accuracy_diff": <float between 0 and 1>,
-{correctness_json}    "completeness": <float between 0 and 1>,
-    "balance": <float between 0 and 1>,
-    "reasoning": "<explanation of compare quality assessment>",
-    "inaccurate_points": ["<unsupported or wrong points>"],
-    "missing_points": ["<important missing points>"]
+    "score": <float between 0 and 1>,
+    "schema": "{metric_schema}",
+    "reason": "<brief reason for this metric>"
 }}
 """
-    response = llm_client.chat(prompt)
-    result = _parse_json_response(response, "compare_quality", require_score=False)
-    result.pop("score", None)
-    score_keys = ["accuracy_sim", "accuracy_diff", "completeness", "balance"]
-    if include_correctness:
-        score_keys.append("correctness")
-    for key in score_keys:
-        if key in result:
-            result[key] = _clamp_score(result[key])
-    if not include_correctness:
-        result.pop("correctness", None)
-    result["inaccurate_points"] = _to_string_list(result.get("inaccurate_points", []))
-    result["missing_points"] = _to_string_list(result.get("missing_points", []))
+        metric_resp = llm_client.chat(prompt)
+        metric_result = _parse_json_response(
+            metric_resp,
+            f"compare_quality_{metric_key}",
+            require_score=False,
+            fallback={
+                "score": 0.0,
+                "schema": metric_schema,
+                "reason": f"Failed to evaluate {metric_key}",
+            },
+        )
+
+        score_val = metric_result.get("score", 0.0)
+        try:
+            score_val = _clamp_score(score_val)
+        except (TypeError, ValueError):
+            score_val = 0.0
+
+        normalized_metric = {
+            "score": score_val,
+            "schema": str(metric_result.get("schema", metric_schema)),
+            "reason": str(metric_result.get("reason", "")),
+        }
+        result[metric_key] = normalized_metric
+
+        if normalized_metric["reason"]:
+            metric_reasons.append(f"{metric_key}: {normalized_metric['reason']}")
+
+    if combined_accuracy_result is not None and str(combined_accuracy_result.get("reason", "")):
+        metric_reasons.insert(0, f"accuracy_pair: {combined_accuracy_result.get('reason', '')}")
+
+    result["reasoning"] = " | ".join(metric_reasons)
     return result
 
 def _extract_compare_parts(test_entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -359,6 +531,7 @@ def evaluate_compare_test_results(
         "provider_correctness": [],
         "query_alignment": [],
         "compare_quality": [],
+        "comparison_overall": [],
         "overall": [],
     }
 
@@ -377,6 +550,19 @@ def evaluate_compare_test_results(
         if query_id in ground_truth:
             gt_answer = ground_truth[query_id].get("Answer") or ground_truth[query_id].get("answer")
 
+        policy_gt_answer = _non_empty_text(test_data.get("policy_ground_truth"))
+        provider_gt_answer = _non_empty_text(test_data.get("pm_ground_truth"))
+        compare_gt_answer = _non_empty_text(test_data.get("ground_truth"))
+
+        # Backward compatibility: if per-scope ground truth is absent, fall back to shared value.
+        shared_gt_answer = _non_empty_text(gt_answer)
+        if not policy_gt_answer:
+            policy_gt_answer = shared_gt_answer
+        if not provider_gt_answer:
+            provider_gt_answer = shared_gt_answer
+        if not compare_gt_answer:
+            compare_gt_answer = shared_gt_answer
+
         parts = _extract_compare_parts(test_data)
         if not parts:
             print(f"  Skipping: no compare_sections/retrieved_docs (need policy/provider definitions)")
@@ -389,13 +575,17 @@ def evaluate_compare_test_results(
 
         similarities = parts.get("similarities", [])
         differences = parts.get("differences", [])
+        comparison_items = parts.get("comparison", [])
 
         result: Dict[str, Any] = {
-            "query": query_full,
+            "query": query,
+            "concept": concept,
+            "answer": test_data.get("answer", ""),
             "policy": {},
             "provider": {},
             "query_alignment": {},
             "compare_quality": {},
+            "comparison_overall_score": 0.0,
             "overall_score": 0.0,
         }
 
@@ -405,12 +595,15 @@ def evaluate_compare_test_results(
             result["policy"]["faithfulness"] = evaluator.evaluate_faithfulness(
                 query_full, policy_def, policy_chunks
             )
+            # Use policy-specific query for relevance evaluation (no comparison intent)
+            # Format: "Medicaid for {concept}"
+            query_policy = f"Medicaid for {concept}" if concept else query
             result["policy"]["answer_relevance"] = evaluator.evaluate_answer_relevance(
-                query_full, policy_def
+                query_policy, policy_def
             )
-            if gt_answer:
+            if policy_gt_answer:
                 result["policy"]["correctness"] = evaluator.evaluate_correctness(
-                    query_full, policy_def, gt_answer
+                    query_full, policy_def, policy_gt_answer
                 )
             for k, v in result["policy"].items():
                 if isinstance(v, dict) and "score" in v:
@@ -422,12 +615,15 @@ def evaluate_compare_test_results(
             result["provider"]["faithfulness"] = evaluator.evaluate_faithfulness(
                 query_full, provider_def, provider_chunks
             )
+            # Use provider-specific query for relevance evaluation (no comparison intent)
+            # Format: "provider manual for {concept}"
+            query_provider = f"provider manual for {concept}" if concept else query
             result["provider"]["answer_relevance"] = evaluator.evaluate_answer_relevance(
-                query_full, provider_def
+                query_provider, provider_def
             )
-            if gt_answer:
+            if provider_gt_answer:
                 result["provider"]["correctness"] = evaluator.evaluate_correctness(
-                    query_full, provider_def, gt_answer
+                    query_full, provider_def, provider_gt_answer
                 )
             for k, v in result["provider"].items():
                 if isinstance(v, dict) and "score" in v:
@@ -444,8 +640,6 @@ def evaluate_compare_test_results(
                 differences,
             )
             qa_metric_score = _derive_score_from_fields(qa, ["comparison_query_relevance"])
-            if qa_metric_score is not None:
-                qa["metric_score"] = qa_metric_score
             result["query_alignment"] = qa
             if qa_metric_score is not None:
                 scores_by_metric["query_alignment"].append(qa_metric_score)
@@ -459,34 +653,84 @@ def evaluate_compare_test_results(
                 concept,
                 similarities,
                 differences,
+                comparison_items,
                 policy_chunks,
                 provider_chunks,
-                include_correctness=bool(gt_answer),
+                compare_ground_truth=compare_gt_answer,
+                include_correctness=bool(compare_gt_answer),
             )
             cq_fields = ["accuracy_sim", "accuracy_diff", "completeness", "balance"]
-            if gt_answer:
+            if compare_gt_answer:
                 cq_fields.append("correctness")
             cq_metric_score = _derive_score_from_fields(
                 cq,
                 cq_fields,
             )
-            if cq_metric_score is not None:
-                cq["metric_score"] = cq_metric_score
             result["compare_quality"] = cq
             if cq_metric_score is not None:
                 scores_by_metric["compare_quality"].append(cq_metric_score)
 
-        # --- Overall (average of policy, provider, query_alignment, compare_quality) ---
-        all_scores = []
-        for section in (result.get("policy", {}), result.get("provider", {})):
-            for v in section.values():
-                if isinstance(v, dict) and "score" in v:
-                    all_scores.append(v["score"])
-        if result.get("query_alignment", {}).get("metric_score") is not None:
-            all_scores.append(result["query_alignment"]["metric_score"])
-        if result.get("compare_quality", {}).get("metric_score") is not None:
-            all_scores.append(result["compare_quality"]["metric_score"])
-        result["overall_score"] = round(sum(all_scores) / len(all_scores), 3) if all_scores else 0.0
+        # Weighted comparison overall score combines query alignment and compare-quality dimensions.
+        # With correctness: query_alignment 30%, correctness 30%, completeness 20%, accuracy 15%, balance 5%.
+        # Without correctness: query_alignment 50%, completeness 30%, accuracy 15%, balance 5%.
+        qa_score = _derive_score_from_fields(result.get("query_alignment", {}), ["comparison_query_relevance"])
+        cq_result = result.get("compare_quality", {})
+        accuracy_score = _derive_score_from_fields(cq_result, ["accuracy_sim", "accuracy_diff"])
+        completeness_score = _derive_score_from_fields(cq_result, ["completeness"])
+        correctness_score = _derive_score_from_fields(cq_result, ["correctness"])
+        balance_score = _derive_score_from_fields(cq_result, ["balance"])
+
+        weighted_components: List[tuple[float, Optional[float]]] = []
+        if correctness_score is not None:
+            weighted_components = [
+                (0.30, qa_score),
+                (0.30, correctness_score),
+                (0.20, completeness_score),
+                (0.15, accuracy_score),
+                (0.05, balance_score),
+            ]
+        else:
+            weighted_components = [
+                (0.50, qa_score),
+                (0.30, completeness_score),
+                (0.15, accuracy_score),
+                (0.05, balance_score),
+            ]
+
+        weighted_sum = sum(weight * score for weight, score in weighted_components if score is not None)
+        available_weight = sum(weight for weight, score in weighted_components if score is not None)
+        if available_weight > 0:
+            result["comparison_overall_score"] = round(weighted_sum / available_weight, 3)
+            scores_by_metric["comparison_overall"].append(result["comparison_overall_score"])
+
+        # Weighted overall score:
+        # - comparison_overall_score: 70%
+        # - policy side average (faithfulness/correctness/answer_relevance): 15%
+        # - provider side average (faithfulness/correctness/answer_relevance): 15%
+        # For policy/provider side, if correctness is missing, average the remaining two metrics.
+        policy_section_score = _derive_section_metric_score(
+            result.get("policy", {}),
+            ["faithfulness", "correctness", "answer_relevance"],
+        )
+        provider_section_score = _derive_section_metric_score(
+            result.get("provider", {}),
+            ["faithfulness", "correctness", "answer_relevance"],
+        )
+
+        comparison_overall_score = None
+        if (result.get("query_alignment") or result.get("compare_quality")) and (
+            "comparison_overall_score" in result
+        ):
+            comparison_overall_score = _clamp_score(result["comparison_overall_score"])
+
+        weighted_components: List[tuple[float, Optional[float]]] = [
+            (0.70, comparison_overall_score),
+            (0.15, policy_section_score),
+            (0.15, provider_section_score),
+        ]
+        weighted_sum = sum(weight * score for weight, score in weighted_components if score is not None)
+        available_weight = sum(weight for weight, score in weighted_components if score is not None)
+        result["overall_score"] = round(weighted_sum / available_weight, 3) if available_weight > 0 else 0.0
         scores_by_metric["overall"].append(result["overall_score"])
 
         evaluation_results["results"][test_id] = result
