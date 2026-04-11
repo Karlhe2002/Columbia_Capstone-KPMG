@@ -1,0 +1,7 @@
+{
+  "Test_query_compare_small_1": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  }
+}

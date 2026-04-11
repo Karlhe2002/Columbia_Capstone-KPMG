@@ -1,0 +1,139 @@
+{
+  "test_id_1": {
+    "query_id": "Test_query_compare_small_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-1",
+    "short_version_id": "comparison_version_undefine",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no10_aug21_pr.pdf::0019",
+          "text": "be able to bill for Medicaid non-dual eligible members. Dual eligible members will\ncontinue to access immunization services through Medicare. Medicaid Managed Care (MMC) enrollees will\ncontinue to access immunization services through their health plans. For Medicaid Managed Care\nOrganization (MCO) billing guidance, providers must contact the individual plan. Providers can access\nindividual plan information via the NYS MMC Pharmacy Benefit Information Center web page at:\nhttps://mmcdruginformation.nysdoh.suny.edu/, then select the individual plan and choose “Pharmacy\nVaccine Billing Guidance”.\nReimbursement for these vaccines may be based on a patient specific, or non-patient specific, order. These\norders must be kept on file at the pharmacy. The ordering prescriber must be actively enrolled as a NYS\nMedicaid provider, unless otherwise exempt, and the prescribers National Provider Identifier (NPI) is required\non the claim for the claim to be paid.\nVaccines for administration to individuals under the age of 19 are recommended by the Advisory Committee\non Immunization Practices (ACIP) and are provided to Medicaid FFS members and MMC enrollees free of\ncharge by the Vaccines for Childre",
+          "chunk_type": "text",
+          "doc_id": "mu_no10_aug21_pr.pdf",
+          "title": "New York State Medicaid Update August 2021 Volume 37 Number 10",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2021/docs/mu_no10_aug21_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2021-08-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5284682677036128,
+          "rerank_score": 0.45801156759262085,
+          "final_score": 2.4615018367767334,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no10_aug21_pr.pdf::0007",
+          "text": "er\nManual (D.0).pdf\n*NYS DOH is exploring the use of the updated NCPDP Reject Code “606”: ‘Brand drug/specific labeler code required’. NYS DOH\nwill provide updated billing guidance if/when use of that NCPDP Reject Code becomes available in FFS.\n**For the Medicaid Eligibility Verification System (MEVS) Response Code, providers can visit the NYS DOH eMedNY Prospective\nDrug Utilization Review/Electronic Claims Capture and Adjudication ProDUR/ECCA Provider Manual (D.0) at:\nhttps://www.emedny.org/ProviderManuals/Pharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro DUR ECCA Provider Manual\n(D.0).pdf.\nPharmacies are not required to submit Dispense as Written (DAW)/Product Selection Code of “1”, but are\nrequired to submit DAW Code of “9” in field 408-D8:\nCode Type Code Code Description Field\nDAW Code “9” Substitution allowed by Prescriber – 408-D8\nPlan Request Brand\nPharmacies will receive the following NCPDP message when the appropriate DAW code is not submitted in\nfield 408-D8:\nCode Type Code Message Field\nNCPDP Reject Code “22” M/I Dispense as Written Code 408-D8\nAugust 2021 New York State Medicaid Update pg. 4\n\nQuestions and Additional Information:\n• The Single Statewide Medication Assisted Tr",
+          "chunk_type": "text",
+          "doc_id": "mu_no10_aug21_pr.pdf",
+          "title": "New York State Medicaid Update August 2021 Volume 37 Number 10",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2021/docs/mu_no10_aug21_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2021-08-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            4,
+            5
+          ],
+          "score": 0.5264171944114651,
+          "rerank_score": 0.18038123846054077,
+          "final_score": 0.5618785619735718,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no11_jun23_pr.pdf::0011",
+          "text": "article is intended to advise\nproviders, who may be new to submitting claims to NYRx, the NYS Medicaid Pharmacy program, that\nall NCPDP-submitted 340B-purchased drug claims when NYS Medicaid is primary payor must be\nsubmitted with claim level identifiers and at actual acquisition cost.\nClaim level identifiers are required for any 340B-purchased drug billed to NYRx, Medicaid Managed Care\n(MMC) Plan, or as a secondary claim, whether it is a medical or pharmacy claim. It is the responsibility of the\ncovered entity (CE) and their contracted pharmacies, if applicable, to correctly identify claims dispensed with\nthe 340B stock of the CE for 340B-eligible NYS Medicaid patients to ensure rebates are not collected for\nthese drugs. If rebates are received by the NYS DOH for drugs obtained via the 340B program due to\nincorrect or missing claim level identifiers, the CE is responsible for reimbursing manufacturers the\n340B discounts.\nThe following table outlines the necessary fields and their values for various claim types to identify 340B-\npurchased drug claims. Please note: 340B pharmacy and medical benefit claims billed to NYS Medicaid\nas primary payor require identifiers and actual acquisi",
+          "chunk_type": "text",
+          "doc_id": "mu_no11_jun23_pr.pdf",
+          "title": "New York State Medicaid Update June 2023 Volume 39 Number 11",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no11_jun23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-06-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            6
+          ],
+          "score": 0.5748078812544202,
+          "rerank_score": 0.004450363107025623,
+          "final_score": 0.4947086572647095,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0058",
+          "text": "Eligibility\nPharmacy providers of Medicaid services are required to verify the eligibility of the Medicaid member. There are two\nmethods available for utilization:\n• The Automated Response Unit (ARU or telephone).\n• The ePACES web-based application.\nThese systems enable pharmacy providers to quickly verify eligibility and facilitate electronic submission of claims.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            40
+          ],
+          "score": 0.6302043874912275,
+          "rerank_score": 0.14096762239933014,
+          "final_score": 3.194798469543457,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0012",
+          "text": "Pick Up / Receipt\n• Pharmacies/DME providers must obtain a legible signature from the Medicaid member, their caregiver, or\ntheir designee to confirm receipt of the prescription drugs, over-the-counter products, medical/surgical\nsupplies, and DME items when picked up from the provider. The pharmacy must have documentation\nconfirming the prescription number(s), date of pick-up and signature. One signature is sufficient for\nmultiple prescriptions being picked up at one time. Claim submission is not proof that the prescription or\nfiscal order was actually furnished.\n• Providers must ensure that a pharmacist counsel the patient consistent with federal (including but not\nlimited to 42 CFR § 456.705(c) and SSA § 1927 (g)(2)(A)(ii)) and State law, rule, or regulation (8 NYCRR §\n63.6(8)), and retain records for six years of provision of counseling in compliance with federal and State law,\nrule, or regulation. Reminder, counseling must include proper storage and use of the drug or item\ndispensed.\n• The pharmacy is accountable to provide intact, usable product. Replacement for any recalled, defective, or\notherwise unusable product is the responsibility of the provider.\n• All Medicaid claims for drugs, over-the-counter products, or medical/surgical supplies that were not\nfurnished (i.e., no proof of receipt) to the Medicaid member must be reversed within 14 days.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            10
+          ],
+          "score": 0.5527677534211404,
+          "rerank_score": 0.09412294626235962,
+          "final_score": 1.4629091024398804,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0059",
+          "text": "Recipient Restriction Program\nMedicaid members who have been assigned to a designated pharmacy are required to receive all pharmacy services\nfrom the selected pharmacy provider. All claims from other pharmacies will be denied. Medicaid members who are\nrestricted to a primary Durable Medical Equipment (DME) dealer must receive all DME and prosthetic and orthotic\nappliances from the DME provider.\nAll primary pharmacy providers must maintain a patient profile for each restricted Medicaid member. The profile must\ncontain, at a minimum, the member’s name, and the date the drugs or supplies were dispensed. These profiles must\nbe made readily available to the New York State Department of Health or its agents, upon request.\nWhen a Medicaid member is restricted to an ordering practitioner (physician, clinic, inpatient hospital and/ or dentist),\nall pharmacy services must be ordered by the primary medical provider (clinic or MD) with the Medicaid member’s\nrestriction type.\nA primary physician or primary clinic is responsible for providing all medical care to the restricted recipient, either\ndirectly or through referral of such recipient to another medical provider for appropriate services. If the primary\nprovider refers the Medicaid restricted recipient to another provider for services, the primary provider’s Medicaid\nidentification number must be used in the referring field to bill for those services. When dispensing medications\nprescribed by the ‘referred’ provider, the pharmacy must enter the primary provider’s Medicaid identification number\nin the referring field in the pharmacy claim.\nMedicaid members may have durable medical equipment restrictions separate from pharmacy restrictions.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            40,
+            41
+          ],
+          "score": 0.547096768827759,
+          "rerank_score": 0.07210566103458405,
+          "final_score": 0.9846919775009155,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"The provider manual, effective October 1, 2025, is more recent than the policy documents (newest effective June 1, 2023); however, neither source provides a direct definition or comprehensive guidance specifically for \\\"dual eligible pharmacy claims.\\\" The policy documents offer limited context regarding dual eligibles for immunization services and secondary claims, while the provider manual focuses on general Medicaid pharmacy procedures.\",\n  \"policy_definition\": \"The newest policy document, effective June 1, 2023, requires all NCPDP-submitted 340B-purchased drug claims, including secondary claims, to be submitted with claim level identifiers and at actual acquisition cost when NYS Medicaid is the primary payor [New York State Medicaid Update June 2023 Volume 39 Number 11:6 — 2023-06-01]. While this mentions \\\"secondary claim\\\" which can apply to dual eligibles, it does not explicitly define \\\"dual eligible pharmacy claims.\\\" An older policy document, effective August 1, 2021, states that \\\"Dual eligible members will continue to access immunization services through Medicare\\\" [New York State Medicaid Update August 2021 Volume 37 Number 10:9 — 2021-08-01].\",\n  \"provider_manual_definition\": \"Insufficient grounded evidence in the provided documents to define this concept for provider manual. The newest provider manual, effective October 1, 2025, outlines general requirements for pharmacy providers, such as verifying Medicaid member eligibility using the Automated Response Unit (ARU) or ePACES web-based application [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:40 — 2025-10-01] and obtaining legible signatures from the Medicaid member, caregiver, or designee to confirm receipt of prescription drugs and other items [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:10 — 2025-10-01]. It also describes the Recipient Restriction Program for Medicaid members [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:40, 41 — 2025-10-01]. However, it does not specifically address \\\"dual eligible pharmacy claims\\\" or their unique billing requirements.\",\n  \"similarities\": [\n    \"Both sources, while not directly defining \\\"dual eligible pharmacy claims,\\\" address general aspects of pharmacy claims for Medicaid members. The provider manual requires pharmacy providers to verify Medicaid member eligibility [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:40 — 2025-10-01]. The policy documents refer to billing for \\\"Medicaid non-dual eligible members\\\" [New York State Medicaid Update August 2021 Volume 37 Number 10:9 — 2021-08-01] and \\\"NYS Medicaid Pharmacy program\\\" claims [New York State Medicaid Update June 2023 Volume 39 Number 11:6 — 2023-06-01].\"\n  ],\n  \"differences\": [\n    \"The policy documents provide limited specific guidance related to \\\"dual eligible members,\\\" stating they access immunization services through Medicare [New York State Medicaid Update August 2021 Volume 37 Number 10:9 — 2021-08-01] and mentioning \\\"secondary claim\\\" submission requirements for 340B drugs when NYS Medicaid is primary [New York State Medicaid Update June 2023 Volume 39 Number 11:6 — 2023-06-01].\",\n    \"The provider manual, despite being more recent, does not contain any specific guidance or definition for \\\"dual eligible pharmacy claims\\\" within the provided excerpts, focusing instead on general Medicaid member eligibility verification, prescription receipt, and recipient restriction programs [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:40, 41 — 2025-10-01].\"\n  ],\n  \"caveats\": \"The provided excerpts from both policy and provider manual documents do not offer a comprehensive definition or specific billing guidance for \\\"dual eligible pharmacy claims.\\\" The provider manual is more recent but lacks specific information on this topic. The policy documents offer only fragmented information, primarily noting that dual eligibles access immunizations via Medicare and mentioning \\\"secondary claims\\\" in the context of 340B drugs. Therefore, neither source provides sufficient detail to fully compare the concept as requested.\"\n}"
+  }
+}
