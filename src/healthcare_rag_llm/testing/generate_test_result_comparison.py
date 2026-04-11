@@ -46,12 +46,12 @@ class RAGComparisonBatchTester:
 
     def __init__(
         self,
-        testing_queries_path: str = "data/testing_queries/test_query_compare_small.json",
+        testing_queries_path: str = "data/testing_queries/testing_query_compare.json",
         output_dir: str = "data/test_results",
         version_id: str = "comparison_version_undefine",
         llm_client: Optional[LLMClient] = None,
         top_k_per_source: int = 3,
-        repeats: int = 1,
+        repeats: int = 5,
         rerank_top_k: int = 20,
         use_reranker: bool = True,
     ) -> None:
@@ -114,9 +114,6 @@ class RAGComparisonBatchTester:
                     row_counter += 1
                     row_name = f"test_id_{row_counter}"
                     pbar.set_description(f"Processing {query_id}")
-
-                    # Keep each batch-test call independent so prior answers do not bleed into later queries.
-                    self.response_generator.chat_history.clear()
 
                     llm_start = time.time()
                     comparison_result = self.response_generator.answer_compare_definitions(
