@@ -38,7 +38,7 @@ class LLMClient:
             elif self.provider == "ollama":
                 url = f"{self.ollama_url}/api/chat"
                 payload = {"model": self.model, "messages": messages, "stream": False,"options":{"temperature":temperature}}
-                r = self.session.post(url, json=payload, timeout=60)
+                r = self.session.post(url, json=payload, timeout=900)
                 r.raise_for_status()
                 data = r.json()
                 return data["message"]["content"]
@@ -64,7 +64,7 @@ class LLMClient:
                 messages.append({"role": "user", "content": user_prompt})
                 url = f"{self.ollama_url}/api/chat"
                 payload = {"model": self.model, "messages": messages, "stream": False}
-                r = self.session.post(url, json=payload, timeout=60)
+                r = self.session.post(url, json=payload, timeout=900)
                 r.raise_for_status()
                 data = r.json()
                 return data["message"]["content"]
