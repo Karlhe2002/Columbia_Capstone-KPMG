@@ -48,7 +48,7 @@ class RAGComparisonBatchTester:
         self,
         testing_queries_path: str = "data/testing_queries/testing_query_compare.json",
         output_dir: str = "data/test_results",
-        version_id: str = "comparison_version_undefine",
+        version_id: str = "comparison_version_ollama_theme_aware",
         llm_client: Optional[LLMClient] = None,
         top_k_per_source: int = 3,
         repeats: int = 5,
@@ -67,9 +67,9 @@ class RAGComparisonBatchTester:
             llm_client
             if llm_client is not None
             else LLMClient(
-                api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"),
-                provider="gemini",
-                model="gemini-2.5-flash",
+                api_key="",
+                provider="ollama",
+                model="llama3.2:3b",
             )
         )
         
