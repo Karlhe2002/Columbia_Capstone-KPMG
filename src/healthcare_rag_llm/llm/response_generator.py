@@ -3,7 +3,7 @@
 import json
 import re
 from datetime import date, datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 from healthcare_rag_llm.llm.llm_client import GenerationCancelled, LLMClient
 from healthcare_rag_llm.graph_builder.queries import query_chunks
 from healthcare_rag_llm.embedding.HealthcareEmbedding import get_embedding_singleton
@@ -36,9 +36,17 @@ class ResponseGenerator:
         self.filter_extractor = filter_extractor
         self.chat_history = chat_history or ChatHistory()
         try:
-            self.compare_system_prompt = load_system_prompt("configs/system_prompt_compare.txt")
+            self.compare_writer_system_prompt = load_system_prompt("configs/system_prompt_compare.txt")
         except FileNotFoundError:
-            self.compare_system_prompt = self.system_prompt
+            self.compare_writer_system_prompt = self.system_prompt
+        try:
+            self.compare_row_generator_system_prompt = load_system_prompt(
+                "configs/system_prompt_compare_row_generator.txt"
+            )
+        except FileNotFoundError:
+            self.compare_row_generator_system_prompt = self.compare_writer_system_prompt
+        # Backward-compatible alias for older compare code paths that still reference this name.
+        self.compare_system_prompt = self.compare_writer_system_prompt
 
     def _get_embedder(self):
         if self.embedder is None:
@@ -83,6 +91,52 @@ class ResponseGenerator:
         return stripped
 
     @staticmethod
+    def _terminal_token_is_suspiciously_truncated(text: str) -> bool:
+        cleaned = " ".join(str(text or "").split()).strip()
+        if not cleaned:
+            return False
+        match = re.search(r"\b([A-Za-z][A-Za-z\-]{4,})(?=[.!?]['\")\]]*\s*$)", cleaned)
+        if not match:
+            return False
+
+        token = match.group(1).lower().rstrip("-")
+        allowed_complete_terms = {
+            "today", "cpt", "hcpcs", "ndc", "cin", "npi", "ffs", "mmc", "ltc", "cbic",
+            "scc", "opra", "mevs", "nyrx", "medicare", "medicaid",
+        }
+        if token in allowed_complete_terms:
+            return False
+
+        suspicious_terminal_stems = (
+            "administra",
+            "administrat",
+            "authorizat",
+            "beneficiar",
+            "categor",
+            "clarificat",
+            "compariso",
+            "coordina",
+            "definitio",
+            "differenc",
+            "dispens",
+            "guidelin",
+            "identificat",
+            "informatio",
+            "organizat",
+            "pharmac",
+            "practicion",
+            "prescript",
+            "procedur",
+            "referenc",
+            "similarit",
+            "transact",
+            "transitio",
+            "utiliz",
+            "vaccin",
+        )
+        return token.endswith(suspicious_terminal_stems)
+
+    @staticmethod
     def _sanitize_compare_text_field(text: str) -> str:
         # Clean up compare output text so obviously broken evidence fragments do not reach the UI.
         # This is intentionally pattern-based rather than tied to one phrase, so it can catch
@@ -101,6 +155,8 @@ class ResponseGenerator:
             .replace("â€˜", "'")
             .replace("â€™", "'")
         )
+
+        cleaned = re.sub(r"\s+([.,;:!?])", r"\1", cleaned)
 
         def _strip_incomplete_quoted_tails(value: str) -> str:
             # If a quoted fragment ends with a suspicious chopped tail, keep the sentence but
@@ -122,15 +178,15 @@ class ResponseGenerator:
             return re.sub(pattern, _replace, value)
 
         def _trim_broken_tail(value: str) -> str:
-            # Trim abrupt endings like a single capital letter, a dangling connector, or a very
-            # short unfinished word at the end of the field.
+            # Trim only clearly broken endings such as a stray capital letter or a dangling
+            # connector. Do not strip ordinary short valid ending words like "card" or acronyms
+            # such as "NYRx", because that can damage otherwise-correct text.
             if not value:
                 return value
 
             broken_tail_patterns = [
                 r"\s+[A-Z](?=\s*(?:\[\d+\])?[.,;:]?\s*$)",  # e.g. "Managed C"
                 r"\b(?:and|or|to|for|with|of|in|on|by|the|this|that|these|those)(?=\s*(?:\[\d+\])?[.,;:]?\s*$)",
-                r"[A-Za-z]{1,4}(?=\s*(?:\[\d+\])?[.,;:]?\s*$)",
             ]
 
             trimmed = value
@@ -139,13 +195,20 @@ class ResponseGenerator:
                 if candidate != trimmed and len(candidate) >= max(30, int(len(trimmed) * 0.6)):
                     trimmed = candidate
                     break
+            if ResponseGenerator._terminal_token_is_suspiciously_truncated(trimmed):
+                candidate = re.sub(r"\s+[^\s]+(?=[.!?]['\")\]]*\s*$)", "", trimmed).rstrip(" ,;:")
+                if len(candidate) >= max(30, int(len(trimmed) * 0.6)):
+                    trimmed = candidate
             return trimmed
 
         def _trim_to_last_safe_boundary(value: str) -> str:
             # If the field still looks damaged, fall back to the last clean sentence/phrase boundary.
             if not value:
                 return value
-            if re.search(r"[.!?](?:\s*(?:\[\d+\])?[\"')\]]*)?\s*$", value):
+            if (
+                re.search(r"[.!?](?:\s*(?:\[\d+\])?[\"')\]]*)?\s*$", value)
+                and not ResponseGenerator._terminal_token_is_suspiciously_truncated(value)
+            ):
                 return value
 
             boundary_matches = list(re.finditer(r"[.!?;:](?=\s|$)", value))
@@ -331,6 +394,588 @@ class ResponseGenerator:
                 for chunk in chunks
             ]
         )
+
+    @staticmethod
+    def _build_chunk_lookup(chunks: List[Dict]) -> Dict[str, Dict]:
+        lookup = {}
+        for chunk in chunks or []:
+            chunk_id = str(chunk.get("chunk_id", "")).strip()
+            if chunk_id:
+                lookup[chunk_id] = chunk
+        return lookup
+
+    @classmethod
+    def _filter_chunks_by_ids(cls, chunks: List[Dict], chunk_ids: List[str]) -> List[Dict]:
+        wanted = {str(chunk_id).strip() for chunk_id in chunk_ids if str(chunk_id).strip()}
+        if not wanted:
+            return []
+        return [chunk for chunk in chunks or [] if str(chunk.get("chunk_id", "")).strip() in wanted]
+
+    @classmethod
+    def _build_compare_row_generator_prompt(
+        cls,
+        question: str,
+        target_concept: str,
+        provider_manual_chunks: List[Dict],
+        policy_chunks: List[Dict],
+    ) -> str:
+        provider_context = cls._format_chunks(provider_manual_chunks, compact_text=False)
+        policy_context = cls._format_chunks(policy_chunks, compact_text=False)
+        recency_brief = cls._build_compare_recency_brief(policy_chunks, provider_manual_chunks)
+        newest_provider = cls._latest_chunk(provider_manual_chunks)
+        newest_policy = cls._latest_chunk(policy_chunks)
+
+        return f"""
+Question:
+{question}
+
+Target concept:
+{target_concept}
+
+Deterministic recency facts:
+- Newest provider-manual chunk id: {newest_provider.get("chunk_id", "N/A") if newest_provider else "N/A"}
+- Newest provider-manual effective date: {newest_provider.get("effective_date", "N/A") if newest_provider else "N/A"}
+- Newest policy chunk id: {newest_policy.get("chunk_id", "N/A") if newest_policy else "N/A"}
+- Newest policy effective date: {newest_policy.get("effective_date", "N/A") if newest_policy else "N/A"}
+
+{recency_brief}
+
+Provider Manual Context Chunks (anchor side):
+{provider_context}
+
+Policy Context Chunks (matching side):
+{policy_context}
+
+Chunks format:
+[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[Effective Date: <effective_date or N/A>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
+
+Task:
+Build a point-to-point row plan. Keep only rows where the provider-manual point and policy point address the same operational topic.
+
+Hard rules:
+1) The provider manual side is the anchor for every row.
+2) Only create a row if there is a concrete provider-manual point worth showing.
+3) Row 1 should start from the newest provider-manual evidence among the chunks that directly answer the user's actual question well.
+4) Each row must name exactly one primary provider-manual chunk and exactly one primary policy chunk.
+5) Keep only same-topic rows; do not keep broad or loosely related matches.
+6) "Same topic" means the same billing route, code family, member group, service type, or operational exception.
+7) Partial is allowed only if both sides still address the same operational topic but one side is less specific or only partly confirms it.
+8) If there is no same-topic policy match, do not keep the row.
+9) For broad questions, usually plan 2 to 3 useful rows when the evidence supports distinct, directly relevant sub-topics.
+10) Each row must cover exactly one narrow operational sub-topic.
+11) Keep each point complete and readable.
+12) Never end a point mid-word, mid-phrase, or with a clipped final term.
+13) Also draft a complete headline summary that directly answers the user's question.
+14) First identify the main kind of question the user is asking, then favor rows that answer that question most directly.
+15) Relevance to the user's actual question is more important than covering nearby but secondary topics.
+16) For broad operational questions, prefer higher-level rows before narrower implementation details.
+17) Examples of broad operational row classes include billing pathway / who to bill, other payer or coordination-first rules, and service-specific billing detail or operational exception. Use these as guidance, not as a mandatory fixed order for every question.
+18) Within each row class, still prefer newer provider-manual evidence.
+19) If a slightly older provider-manual chunk answers the question more directly than a newer but only partially relevant chunk, prefer the more directly relevant chunk.
+20) Keep provider_manual_point and policy_point direct but informative, usually 1 to 2 complete sentences.
+21) Include one concrete operational detail when available, such as the billing pathway, member group, code family, field requirement, or limitation.
+22) Add a third row when it still adds a distinct, directly relevant comparison rather than a weak stretch.
+23) Prefer 2 distinct rows over 1 blended row when the evidence clearly supports two different useful sub-topics.
+24) Do not settle for a single narrow row if a second directly relevant row would materially improve the answer to a broad question.
+25) For broad questions, actively look for a second complementary row before stopping at one.
+26) When the question is broad, a second row may be slightly broader or less specific than the first row as long as it still helps answer the user's actual question.
+27) If the best second row is not perfectly parallel but is still materially relevant to the same operational scenario, keep it as partial rather than dropping it.
+28) Do not merge multiple separate sub-topics into one row just to stay short.
+29) Avoid near-duplicate rows, but allow a second row when it adds a distinct operational dimension to the answer.
+
+Return ONLY valid JSON with exactly this schema:
+{{
+  "headline_summary": "1 to 3 complete sentences that directly answer the question",
+  "row_plan": [
+    {{
+      "row_id": "row_1",
+      "topic": "one short sub-topic label",
+      "provider_manual_chunk_ids": ["exactly_one_primary_chunk_id"],
+      "provider_manual_point": "one concise grounded provider-manual point",
+      "policy_chunk_ids": ["exactly_one_primary_chunk_id"],
+      "policy_match_quality": "strong|partial",
+      "policy_point": "one concise grounded policy point",
+      "match_reason": "one short same-topic rationale"
+    }}
+  ]
+}}
+""".strip()
+
+    @classmethod
+    def _parse_compare_row_plan(cls, llm_response: str) -> Dict:
+        cleaned = re.sub(r'^```(?:json)?\s*', '', (llm_response or "").strip())
+        cleaned = re.sub(r'\s*```$', '', cleaned)
+        try:
+            parsed = json.loads(cleaned)
+        except json.JSONDecodeError:
+            return {"headline_summary": "", "row_plan": []}
+
+        headline_summary = cls._sanitize_compare_text_field(parsed.get("headline_summary", ""))
+        row_plan = parsed.get("row_plan", [])
+        if not isinstance(row_plan, list):
+            return {"headline_summary": headline_summary, "row_plan": []}
+
+        normalized_rows = []
+        for idx, item in enumerate(row_plan, 1):
+            if not isinstance(item, dict):
+                continue
+
+            provider_ids = item.get("provider_manual_chunk_ids", [])
+            policy_ids = item.get("policy_chunk_ids", [])
+            if isinstance(provider_ids, str):
+                provider_ids = [provider_ids]
+            if isinstance(policy_ids, str):
+                policy_ids = [policy_ids]
+
+            quality = str(item.get("policy_match_quality", "")).strip().lower()
+            if quality not in {"strong", "partial"}:
+                quality = "partial"
+
+            normalized_rows.append(
+                {
+                    "row_id": str(item.get("row_id") or f"row_{idx}").strip(),
+                    "topic": str(item.get("topic", "")).strip(),
+                    "provider_manual_chunk_ids": [str(v).strip() for v in provider_ids if str(v).strip()],
+                    "provider_manual_point": cls._sanitize_compare_text_field(item.get("provider_manual_point", "")),
+                    "policy_chunk_ids": [str(v).strip() for v in policy_ids if str(v).strip()],
+                    "policy_match_quality": quality,
+                    "policy_point": cls._sanitize_compare_text_field(item.get("policy_point", "")),
+                    "match_reason": cls._sanitize_compare_text_field(item.get("match_reason", "")),
+                }
+            )
+
+        return {
+            "headline_summary": headline_summary,
+            "row_plan": normalized_rows,
+        }
+
+    def generate_compare_row_plan(
+        self,
+        question: str,
+        target_concept: str,
+        provider_manual_chunks: List[Dict],
+        policy_chunks: List[Dict],
+        cancel_check=None,
+    ) -> Tuple[str, Dict]:
+        prompt = self._build_compare_row_generator_prompt(
+            question=question,
+            target_concept=target_concept,
+            provider_manual_chunks=provider_manual_chunks,
+            policy_chunks=policy_chunks,
+        )
+        raw = self.llm_client.chat(
+            messages=self._compose_messages(
+                user_msg=prompt,
+                system_prompt=self.compare_row_generator_system_prompt,
+            ),
+            temperature=0.1,
+            cancel_check=cancel_check,
+        )
+        return raw, self._parse_compare_row_plan(raw)
+
+    @staticmethod
+    def _looks_chopped_text(value: str) -> bool:
+        text = " ".join(str(value or "").split()).strip()
+        if not text:
+            return True
+        if text[-1] not in ".!?":
+            return True
+        if re.search(r"\b(?:and|or|to|for|with|of|in|on|by|the|this|that|these|those)\s*[.!?]$", text, re.I):
+            return True
+        if re.search(r"\b\w+\s+[.!?]$", text):
+            return True
+        if ResponseGenerator._terminal_token_is_suspiciously_truncated(text):
+            return True
+        if re.search(r"\b[A-Za-z]{1,4}\.$", text):
+            return True
+        if re.search(r"\b(?:and|or|to|for|with|of|in|on|by|the|this|that|these|those)\.$", text, re.I):
+            return True
+        if re.search(r"\b[A-Z]\.$", text):
+            return True
+        return False
+
+    @staticmethod
+    def _topic_is_too_broad(topic: str) -> bool:
+        cleaned = " ".join(str(topic or "").split()).strip().lower()
+        if not cleaned:
+            return True
+        broad_markers = (
+            "general guidance",
+            "overall billing",
+            "general billing",
+            "general managed care guidance",
+            "billing guidance",
+            "policy guidance",
+            "provider guidance",
+            "general pharmacy billing",
+        )
+        return any(marker in cleaned for marker in broad_markers)
+
+    @classmethod
+    def _extract_compare_anchor_terms(cls, *texts: str) -> Set[str]:
+        stop = {
+            "the", "a", "an", "and", "or", "to", "for", "with", "of", "in", "on", "by", "is", "are",
+            "be", "as", "that", "this", "these", "those", "provider", "providers", "manual", "policy",
+            "medicaid", "billing", "bill", "claim", "claims", "payment", "payments", "program",
+            "services", "service", "member", "members", "pharmacy", "pharmacies", "update", "state",
+            "nys", "new", "york", "must", "should", "using", "used", "before", "after", "when",
+            "only", "under", "from", "into", "such", "their", "they", "them",
+        }
+        terms: Set[str] = set()
+        for text in texts:
+            raw = str(text or "")
+            for match in re.findall(r"\b(?:HCPCS|CPT|NDC|CIN|NPI|FFS|MMC|LTC|CBIC|SCC|OPRA|DMEPOS|MEVS)\b", raw, flags=re.I):
+                terms.add(match.lower())
+            for match in re.findall(r"\b\d{3}-[A-Z]{1,3}\b", raw):
+                terms.add(match.lower())
+            for match in re.findall(r"\b[A-Z]\d{4}\b", raw):
+                terms.add(match.lower())
+            for match in re.findall(r"\b\d{4,5}\b", raw):
+                terms.add(match.lower())
+            for word in re.findall(r"[A-Za-z0-9]+", raw.lower()):
+                if len(word) <= 2 or word in stop:
+                    continue
+                terms.add(word)
+        return terms
+
+    @classmethod
+    def _row_same_topic(cls, row: Dict) -> Dict:
+        topic = row.get("topic", "")
+        provider = row.get("provider_manual_point", "")
+        policy = row.get("policy_point", "")
+        provider_terms = cls._extract_compare_anchor_terms(provider)
+        policy_terms = cls._extract_compare_anchor_terms(policy)
+        topic_terms = cls._extract_compare_anchor_terms(topic)
+        shared_terms = provider_terms & policy_terms
+        topic_supported = bool(topic_terms & provider_terms) and bool(topic_terms & policy_terms)
+        provider_topic_overlap = topic_terms & provider_terms
+        policy_topic_overlap = topic_terms & policy_terms
+        same_topic = bool(shared_terms)
+        if not same_topic and topic_supported:
+            same_topic = True
+        if not same_topic and provider_topic_overlap and policy_topic_overlap:
+            same_topic = True
+        return {
+            "same_topic": same_topic,
+            "shared_terms": sorted(shared_terms),
+            "topic_supported": topic_supported,
+            "provider_topic_overlap": sorted(provider_topic_overlap),
+            "policy_topic_overlap": sorted(policy_topic_overlap),
+        }
+
+    @classmethod
+    def _build_compare_fallback_point(cls, chunk: Optional[Dict], max_chars: int = 280) -> str:
+        if not isinstance(chunk, dict):
+            return ""
+        raw = cls._trim_incomplete_trailing_text(chunk.get("text", "") or "")
+        raw = " ".join(str(raw or "").split()).strip()
+        if not raw:
+            return ""
+
+        first_sentence = re.search(r"^(.+?[.!?])(?=\s|$)", raw)
+        if first_sentence:
+            candidate = first_sentence.group(1).strip()
+            if len(candidate) >= 30:
+                return cls._sanitize_compare_text_field(candidate)
+
+        candidate = cls._compact_text(raw, max_chars=max_chars).strip()
+        if candidate and candidate[-1] not in ".!?":
+            candidate = candidate.rstrip(" ,;:") + "."
+        return cls._sanitize_compare_text_field(candidate)
+
+    @classmethod
+    def _normalize_compare_row_plan(
+        cls,
+        row_plan: Dict,
+        provider_manual_chunks: Optional[List[Dict]] = None,
+        policy_chunks: Optional[List[Dict]] = None,
+    ) -> Dict:
+        rows = row_plan.get("row_plan", []) or []
+        headline_summary = cls._sanitize_compare_text_field(row_plan.get("headline_summary", ""))
+        provider_rank = {
+            str(chunk.get("chunk_id", "")).strip(): idx
+            for idx, chunk in enumerate(provider_manual_chunks or [])
+            if str(chunk.get("chunk_id", "")).strip()
+        }
+        provider_lookup = cls._build_chunk_lookup(provider_manual_chunks or [])
+        policy_lookup = cls._build_chunk_lookup(policy_chunks or [])
+
+        def _row_provider_rank(row: Dict) -> int:
+            ranks = [
+                provider_rank.get(str(chunk_id).strip(), 10_000)
+                for chunk_id in row.get("provider_manual_chunk_ids", []) or []
+                if str(chunk_id).strip()
+            ]
+            return min(ranks) if ranks else 10_000
+
+        normalized_rows = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            row_copy = dict(row)
+            row_copy["_provider_rank"] = _row_provider_rank(row_copy)
+            normalized_rows.append(row_copy)
+
+        normalized_rows.sort(key=lambda row: row.get("_provider_rank", 10_000))
+        normalized_plan_rows = []
+        used_primary_provider_ids = set()
+
+        for item in normalized_rows:
+            if len(normalized_plan_rows) >= 4:
+                break
+            if not isinstance(item, dict):
+                continue
+            row = dict(item)
+            if not row.get("provider_manual_chunk_ids"):
+                continue
+
+            provider_ids = [str(v).strip() for v in row.get("provider_manual_chunk_ids", []) or [] if str(v).strip()]
+            policy_ids = [str(v).strip() for v in row.get("policy_chunk_ids", []) or [] if str(v).strip()]
+            provider_ids = provider_ids[:1]
+            policy_ids = policy_ids[:1]
+            if not policy_ids and policy_chunks:
+                fallback_policy_chunk = policy_chunks[0]
+                fallback_policy_id = str(fallback_policy_chunk.get("chunk_id", "")).strip()
+                if fallback_policy_id:
+                    policy_ids = [fallback_policy_id]
+            if not policy_ids:
+                continue
+
+            primary_provider_id = provider_ids[0]
+            if primary_provider_id in used_primary_provider_ids:
+                continue
+
+            row["provider_manual_chunk_ids"] = provider_ids
+            row["policy_chunk_ids"] = policy_ids
+
+            topic = cls._sanitize_compare_text_field(row.get("topic", ""))
+            if not topic:
+                topic = "Retrieved billing guidance"
+            row["topic"] = topic
+
+            if not row.get("provider_manual_point"):
+                row["provider_manual_point"] = cls._build_compare_fallback_point(
+                    provider_lookup.get(provider_ids[0])
+                ) or "Relevant provider-manual guidance was retrieved for this point."
+            if not row.get("policy_point"):
+                row["policy_point"] = cls._build_compare_fallback_point(
+                    policy_lookup.get(policy_ids[0])
+                ) or "Relevant policy guidance was retrieved for this point."
+
+            if cls._looks_chopped_text(row.get("provider_manual_point", "")):
+                provider_point = cls._build_compare_fallback_point(provider_lookup.get(provider_ids[0]))
+                if provider_point:
+                    row["provider_manual_point"] = provider_point
+            if cls._looks_chopped_text(row.get("policy_point", "")):
+                policy_point = cls._build_compare_fallback_point(policy_lookup.get(policy_ids[0]))
+                if policy_point:
+                    row["policy_point"] = policy_point
+
+            row["policy_match_quality"] = (
+                row.get("policy_match_quality")
+                if row.get("policy_match_quality") in {"strong", "partial"}
+                else "partial"
+            )
+            row["match_reason"] = cls._sanitize_compare_text_field(row.get("match_reason", ""))
+            normalized_plan_rows.append(row)
+            used_primary_provider_ids.add(primary_provider_id)
+
+        target_row_count = 3
+        if not normalized_plan_rows and provider_manual_chunks and policy_chunks:
+            normalized_plan_rows = []
+            fallback_limit = min(target_row_count, len(provider_manual_chunks))
+            for idx in range(fallback_limit):
+                provider_chunk = provider_manual_chunks[idx]
+                policy_chunk = policy_chunks[min(idx, len(policy_chunks) - 1)]
+                provider_id = str(provider_chunk.get("chunk_id", "")).strip()
+                policy_id = str(policy_chunk.get("chunk_id", "")).strip()
+                if not provider_id or not policy_id:
+                    continue
+                normalized_plan_rows.append(
+                    {
+                        "row_id": f"row_{len(normalized_plan_rows) + 1}",
+                        "topic": "Retrieved billing guidance",
+                        "provider_manual_chunk_ids": [provider_id],
+                        "provider_manual_point": cls._build_compare_fallback_point(provider_chunk)
+                        or "Relevant provider-manual guidance was retrieved for this question.",
+                        "policy_chunk_ids": [policy_id],
+                        "policy_match_quality": "partial",
+                        "policy_point": cls._build_compare_fallback_point(policy_chunk)
+                        or "Relevant policy guidance was retrieved for this question.",
+                        "match_reason": "Kept as an inclusive fallback row from the top retrieved provider-manual and policy chunks.",
+                    }
+                )
+
+        for idx, row in enumerate(normalized_plan_rows, 1):
+            row["row_id"] = f"row_{idx}"
+
+        return {
+            "headline_summary": headline_summary,
+            "row_plan": normalized_plan_rows,
+        }
+
+    @classmethod
+    def _build_compare_row_refs(cls, row_plan: Dict, chunk_lookup: Dict[str, Dict]) -> List[Dict]:
+        refs = []
+        for row in row_plan.get("row_plan", []) or []:
+            row_ref = {"provider_manual": [], "policy_update": []}
+            for side, ids_key in (
+                ("provider_manual", "provider_manual_chunk_ids"),
+                ("policy_update", "policy_chunk_ids"),
+            ):
+                side_refs = []
+                for chunk_id in row.get(ids_key, []) or []:
+                    chunk = chunk_lookup.get(str(chunk_id).strip())
+                    if not chunk:
+                        continue
+                    side_refs.append(
+                        {
+                            "chunk_id": str(chunk.get("chunk_id", "")).strip(),
+                            "doc_id": str(chunk.get("doc_id", "")).strip(),
+                            "title": cls._get_doc_title(chunk),
+                            "pages": chunk.get("pages", "N/A"),
+                            "effective_date": chunk.get("effective_date") or "N/A",
+                        }
+                    )
+                row_ref[side] = side_refs
+            refs.append(row_ref)
+        return refs
+
+    @classmethod
+    def _build_compare_writer_prompt(
+        cls,
+        question: str,
+        target_concept: str,
+        row_plan: Dict,
+        provider_manual_chunks: List[Dict],
+        policy_chunks: List[Dict],
+    ) -> str:
+        recency_brief = cls._build_compare_recency_brief(policy_chunks, provider_manual_chunks)
+        row_plan_json = json.dumps(row_plan, ensure_ascii=True, indent=2)
+        planned_headline = cls._sanitize_compare_text_field(row_plan.get("headline_summary", ""))
+        provider_context = cls._format_chunks(provider_manual_chunks, compact_text=False)
+        policy_context = cls._format_chunks(policy_chunks, compact_text=False)
+
+        return f"""
+Question:
+{question}
+
+Target concept:
+{target_concept}
+
+{recency_brief}
+
+Planner headline draft:
+{planned_headline or "N/A"}
+
+Approved row plan:
+{row_plan_json}
+
+Provider Manual Referenced Chunks:
+{provider_context}
+
+Policy Referenced Chunks:
+{policy_context}
+
+Task:
+Write the final comparison from the approved row plan.
+
+Hard rules:
+1) Do not invent new rows.
+2) Keep the row order from the approved row plan.
+3) Keep the provider-manual side as the anchor.
+4) If a row is partial, reflect that honestly instead of overstating the match.
+5) Keep each row focused on the single operational sub-topic already approved.
+6) aligned_pairs should be citation-light because references for the first table are rendered deterministically in the UI.
+7) Similarities and differences should still use inline citations when available.
+8) Use the planner headline draft as the starting point for "headline_summary". You may improve wording for clarity, but preserve its grounded conclusion.
+9) headline_summary must be simple: 1 to 2 short sentences that answer the question directly without summarizing every row.
+10) Every sentence must be complete and fully finished.
+11) Never end headline_summary, aligned_pairs, similarities, differences, or caveats with a clipped word or incomplete phrase.
+12) Each aligned_pairs cell should usually contain 2 to 3 short complete sentences.
+13) Sentence 1 should state the core rule.
+14) Sentence 2 should add the most important operational detail or limitation.
+15) Sentence 3 may add one concise nuance only if it improves the comparison.
+16) Prefer multiple short complete sentences over one dense long sentence.
+17) Do not make first-table cells so short that they lose the operational detail needed to understand the comparison.
+18) When grounded evidence allows it, include one concrete detail such as the billing pathway, member group, code family, field requirement, or exception.
+19) Prefer one short complete sentence per similarity or difference bullet.
+20) Spell out full words such as "administration", "organization", and "identification". Never shorten them to clipped stems like "administra.".
+21) If a field would otherwise end in an incomplete thought, rewrite it as a shorter complete sentence.
+22) Before returning JSON, check the final word of every text field. If any field ends with an incomplete word, rewrite that field before returning.
+23) Write provider_manual as a direct statement of current guidance from the provider-manual chunk for that row.
+24) Write policy_update as the closest matching policy statement for the same row topic, and say plainly when it is broader or less specific.
+25) For broad questions, keep headline_summary high-level and avoid summarizing every row.
+26) Use bracket citations in similarities and differences, not raw chunk ids or parenthesized file tokens.
+27) If the approved row plan is empty, return aligned_pairs as an empty list and explain in caveats that no approved comparison row survived validation, even though chunks may still have been retrieved.
+
+Return ONLY valid JSON with exactly these keys:
+{{
+  "headline_summary": "1 to 2 short complete sentences that directly answer the user's question",
+  "aligned_pairs": [
+    {{"provider_manual": "2 to 3 short complete sentences with no inline citations", "policy_update": "2 to 3 short complete sentences with no inline citations"}}
+  ],
+  "similarities": ["One short complete sentence similarity with inline citation when available"],
+  "differences": ["One short complete sentence difference with inline citation when available"],
+  "caveats": "Complete sentence caveat, or null if none"
+}}
+""".strip()
+
+    def write_compare_from_row_plan(
+        self,
+        question: str,
+        target_concept: str,
+        row_plan: Dict,
+        provider_manual_chunks: List[Dict],
+        policy_chunks: List[Dict],
+        cancel_check=None,
+    ) -> str:
+        prompt = self._build_compare_writer_prompt(
+            question=question,
+            target_concept=target_concept,
+            row_plan=row_plan,
+            provider_manual_chunks=provider_manual_chunks,
+            policy_chunks=policy_chunks,
+        )
+        return self.llm_client.chat(
+            messages=self._compose_messages(
+                user_msg=prompt,
+                system_prompt=self.compare_writer_system_prompt,
+            ),
+            cancel_check=cancel_check,
+        )
+
+    @classmethod
+    def _compare_sections_to_payload(cls, sections: Dict) -> Dict:
+        return {
+            "headline_summary": sections.get("headline_summary", ""),
+            "aligned_pairs": sections.get("aligned_pairs", []) or [],
+            "similarities": sections.get("similarities", []) or [],
+            "differences": sections.get("differences", []) or [],
+            "caveats": sections.get("caveats"),
+        }
+
+    @classmethod
+    def _build_compare_debug_payload(
+        cls,
+        planner_raw: str,
+        planner_row_plan: Dict,
+        normalized_row_plan: Dict,
+        writer_raw: str,
+        writer_sections: Dict,
+    ) -> Dict:
+        return {
+            "planner_raw": planner_raw,
+            "planner_row_plan": planner_row_plan,
+            "normalized_row_plan": normalized_row_plan,
+            "writer_raw": writer_raw,
+            "writer_sections": cls._compare_sections_to_payload(writer_sections or {}),
+            "repair_flags_before": [],
+            "repair_raw": None,
+            "repair_sections": None,
+            "repair_flags_after": [],
+            "forced_sections": None,
+        }
 
     @staticmethod
     def _clean_compare_concept(value: str) -> str:
@@ -707,75 +1352,58 @@ Formatting requirements (strict):
         policy_ordered = self._sort_chunks_newest_first(policy_final)
         provider_manual_ordered = self._sort_chunks_newest_first(provider_manual_final)
         # For compare mode, keep chunk text intact so the model does not see chopped evidence mid-sentence.
-        policy_context = self._format_chunks(policy_ordered, compact_text=False)
-        provider_context = self._format_chunks(provider_manual_ordered, compact_text=False)
         target_concept = resolved_concept or "the requested concept"
 
-        user_msg = f"""
-Question:
-{question}
-
-Target concept:
-{target_concept}
-
-Policy Context Chunks (authoritative; cite only these):
-{policy_context}
-
-Provider Manual Context Chunks (authoritative; cite only these):
-{provider_context}
-
-Chunks format:
-[Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[Effective Date: <effective_date or N/A>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
-
-Return ONLY one valid JSON object with exactly these keys:
-{{
-  "headline_summary": "1 to 3 complete sentences that directly answer the user's question",
-  "aligned_pairs": [
-    {{"provider_manual": "Complete sentence with one provider-manual citation", "policy_update": "Complete sentence for the same point"}}
-  ],
-  "similarities": ["Complete sentence similarity"],
-  "differences": ["Complete sentence difference"],
-  "caveats": "Complete sentence caveat, or null if none"
-}}
-Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
-Priority order (highest to lowest):
-1) Sentence completeness
-2) Row alignment quality
-3) Grounding and citations
-4) Number of rows
-
-Sentence rules:
-- Every textual field must be complete sentence(s) with proper punctuation.
-- Do not end mid-word, mid-phrase, or with dangling connectors.
-- Do not use clipped abbreviations (for example, "serv.", "organizat.", "pharm.").
-- If evidence is partial, state that in a complete sentence.
-
-Headline rules:
-- headline_summary must be 1 to 3 complete sentences and directly answer the question.
-- Keep it high-level; do not summarize every row.
-- Recency is shown by the deterministic source-signal banner; mention recency only if the user explicitly asks.
-
-Row rules:
-- aligned_pairs must contain 1 to 4 rows based on evidence strength; do not force weak extra rows.
-- Build rows from provider-manual evidence first, newest to oldest.
-- Row 1 must use the most recent provider-manual chunk (by effective date among retrieved provider-manual chunks).
-- One row must correspond to one provider-manual source chunk.
-- provider_manual must use exactly one provider-manual citation for that row.
-- policy_update must address the same point and either confirm, contrast, or state no close policy match.
-- A valid match must share at least one specific anchor detail (service type, code family, member group, or billing pathway). Generic overlap words do not count as a match.
-- If no close policy match exists, policy_update must explicitly say so.
-- Do not create policy-only rows or switch to a different scenario/context within a row.
-
-Citation rules:
-- Substantive claims should include inline citations when available.
-- Citation style: [doc_title or doc_title:page - date].
-""".strip()
-
-        messages = self._compose_messages(user_msg=user_msg, system_prompt=self.compare_system_prompt)
-        llm_response = self.llm_client.chat(messages=messages, cancel_check=cancel_check)
+        planner_raw, planner_row_plan = self.generate_compare_row_plan(
+            question=question,
+            target_concept=target_concept,
+            provider_manual_chunks=provider_manual_ordered,
+            policy_chunks=policy_ordered,
+            cancel_check=cancel_check,
+        )
+        row_plan = self._normalize_compare_row_plan(
+            planner_row_plan,
+            provider_manual_chunks=provider_manual_ordered,
+            policy_chunks=policy_ordered,
+        )
         if cancel_check and cancel_check():
             raise GenerationCancelled()
-        compare_sections = self._parse_compare_response(llm_response)
+
+        row_provider_ids = []
+        row_policy_ids = []
+        for row in row_plan.get("row_plan", []) or []:
+            row_provider_ids.extend(row.get("provider_manual_chunk_ids", []) or [])
+            row_policy_ids.extend(row.get("policy_chunk_ids", []) or [])
+
+        writer_provider_chunks = self._filter_chunks_by_ids(provider_manual_ordered, row_provider_ids)
+        writer_policy_chunks = self._filter_chunks_by_ids(policy_ordered, row_policy_ids)
+        writer_raw = self.write_compare_from_row_plan(
+            question=question,
+            target_concept=target_concept,
+            row_plan=row_plan,
+            provider_manual_chunks=writer_provider_chunks,
+            policy_chunks=writer_policy_chunks,
+            cancel_check=cancel_check,
+        )
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
+
+        writer_sections = self._parse_compare_response(writer_raw)
+        llm_response = writer_raw
+        compare_sections = writer_sections
+        if cancel_check and cancel_check():
+            raise GenerationCancelled()
+
+        compare_debug = self._build_compare_debug_payload(
+            planner_raw=planner_raw,
+            planner_row_plan=planner_row_plan,
+            normalized_row_plan=row_plan,
+            writer_raw=writer_raw,
+            writer_sections=writer_sections,
+        )
+
+        chunk_lookup = self._build_chunk_lookup(provider_manual_ordered + policy_ordered)
+        compare_row_refs = self._build_compare_row_refs(row_plan, chunk_lookup)
 
         all_chunks = policy_final + provider_manual_final
         followup_questions = self._generate_followup_questions(
@@ -793,6 +1421,9 @@ Citation rules:
             "concept": resolved_concept or concept,
             "answer": llm_response,
             "compare_sections": compare_sections,
+            "compare_row_plan": row_plan,
+            "compare_row_refs": compare_row_refs,
+            "compare_debug": compare_debug,
             "followup_questions": followup_questions,
             "query_understanding": {
                 "retrieval_query": retrieval_query,

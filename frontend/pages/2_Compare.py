@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import traceback
 import html
+import json
 import markdown
 import re
 import threading
@@ -263,6 +264,8 @@ def _finalize_compare_task():
         retrieved_docs_grouped = {}
         followup_questions = result.get("followup_questions", [])
         compare_sections = result.get("compare_sections", {})
+        compare_row_refs = result.get("compare_row_refs", [])
+        compare_debug = result.get("compare_debug", {})
         if isinstance(retrieved_docs, dict):
             policy_docs = retrieved_docs.get("policy", []) or []
             provider_docs = retrieved_docs.get("provider_manual", []) or []
@@ -278,6 +281,8 @@ def _finalize_compare_task():
             "retrieved_docs": retrieved_docs,
             "retrieved_docs_grouped": retrieved_docs_grouped,
             "compare_sections": compare_sections,
+            "compare_row_refs": compare_row_refs,
+            "compare_debug": compare_debug,
             "followup_questions": followup_questions,
             "is_followup": bool(snapshot.get("is_followup")),
         })
@@ -393,6 +398,53 @@ def format_retrieved_docs_compare_table(retrieved_docs_grouped):
     </table>
     </div>
     """
+
+
+def format_compare_debug(debug_payload):
+    if not debug_payload:
+        return ""
+
+    def _pretty(value):
+        if value is None:
+            return "null"
+        if isinstance(value, str):
+            return value
+        return json.dumps(value, indent=2, ensure_ascii=False)
+
+    sections = [
+        ("Planner Raw", debug_payload.get("planner_raw")),
+        ("Planner Parsed", debug_payload.get("planner_row_plan")),
+        ("Normalized Row Plan", debug_payload.get("normalized_row_plan")),
+        ("Writer Raw", debug_payload.get("writer_raw")),
+        ("Writer Parsed", debug_payload.get("writer_sections")),
+        ("Repair Flags Before", debug_payload.get("repair_flags_before")),
+        ("Repair Raw", debug_payload.get("repair_raw")),
+        ("Repair Parsed", debug_payload.get("repair_sections")),
+        ("Repair Flags After", debug_payload.get("repair_flags_after")),
+        ("Forced Sections", debug_payload.get("forced_sections")),
+    ]
+
+    blocks = []
+    for label, value in sections:
+        if value in (None, "", [], {}):
+            continue
+        blocks.append(
+            f"<details style='margin-top:0.5rem;'>"
+            f"<summary style='cursor:pointer; font-weight:600;'>{html.escape(label)}</summary>"
+            f"<pre style='white-space:pre-wrap; word-break:break-word; background:#F7F9FC; border:1px solid #E1E7F0; border-radius:8px; padding:10px; margin-top:0.4rem; font-size:13px; line-height:1.45;'>{html.escape(_pretty(value))}</pre>"
+            f"</details>"
+        )
+
+    if not blocks:
+        return ""
+
+    return (
+        "<div style='margin-top:1rem; border-top:1px solid #E5E7EB; padding-top:0.75rem;'>"
+        "<strong>Debug:</strong><br>"
+        "<em style='color:#666; font-size:0.9em;'>Planner, normalizer, writer, repair, and fallback artifacts for this compare run.</em>"
+        + "".join(blocks)
+        + "</div>"
+    )
 
 _COMPARE_CSS = """
 <style>
@@ -555,7 +607,7 @@ def _build_recency_summary(retrieved_docs_grouped):
     return " ".join(parts)
 
 
-def format_compare_tables(sections, retrieved_docs_grouped=None):
+def format_compare_tables(sections, retrieved_docs_grouped=None, compare_row_refs=None):
     """Render compare definitions result as headline + 2 HTML tables + caveats."""
     headline_raw = sections.get("headline_summary", "")
     aligned_pairs = sections.get("aligned_pairs", []) or []
@@ -565,6 +617,7 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     differences = sections.get("differences", [])
     caveats = sections.get("caveats")
     retrieved_docs_grouped = retrieved_docs_grouped or {}
+    compare_row_refs = compare_row_refs or []
 
     citation_to_num = {}
     citation_order = []
@@ -616,6 +669,106 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
                     return head.strip()
         return cleaned
 
+    def _humanize_writer_citation(cite: str):
+        cleaned = _strip_trailing_date_from_citation(cite)
+        matched_doc = _match_doc_for_citation(cleaned) or _match_doc_for_citation(str(cite or "").strip())
+        if matched_doc:
+            return {
+                "display_name": _doc_display_name(matched_doc),
+                "pages": matched_doc.get("pages", "N/A"),
+                "effective_date": _effective_date_label(matched_doc),
+            }
+
+        display_names = []
+        for piece in re.split(r"\s*,\s*", cleaned):
+            token = str(piece or "").strip()
+            if not token:
+                continue
+            token = token.split("::", 1)[0].strip()
+            doc = _match_doc_for_citation(token)
+            if doc:
+                label = _doc_display_name(doc)
+            else:
+                label = re.sub(r"^.*[\\/]", "", token)
+                label = re.sub(r"\.pdf$", "", label, flags=re.IGNORECASE)
+                label = label.replace("_", " ").strip(" -:")
+            if label and label not in display_names:
+                display_names.append(label)
+
+        return {
+            "display_name": ", ".join(display_names) if display_names else "Retrieved document snippet",
+            "pages": "N/A",
+            "effective_date": _date_from_citation_text(cite),
+        }
+
+    def _split_writer_citation_pieces(cite: str) -> list:
+        cleaned = _strip_trailing_date_from_citation(cite)
+        pieces = []
+        seen = set()
+        for piece in re.split(r"\s*,\s*", cleaned):
+            token = str(piece or "").strip()
+            if not token:
+                continue
+            if token not in seen:
+                seen.add(token)
+                pieces.append(token)
+        return pieces or ([str(cleaned).strip()] if str(cleaned).strip() else [])
+
+    def _register_deterministic_ref(ref_item: dict) -> int:
+        chunk_id = str(ref_item.get("chunk_id", "")).strip()
+        doc_id = str(ref_item.get("doc_id", "")).strip()
+        key = f"chunk::{chunk_id}" if chunk_id else f"doc::{doc_id}"
+        if not key or key.endswith("::"):
+            return 0
+        if key not in citation_to_num:
+            citation_to_num[key] = len(citation_order) + 1
+            citation_order.append(
+                {
+                    "kind": "deterministic",
+                    "key": key,
+                    "chunk_id": chunk_id,
+                    "doc_id": doc_id,
+                    "title": str(ref_item.get("title", "")).strip() or doc_id or "Unknown Document",
+                    "pages": ref_item.get("pages", "N/A"),
+                    "effective_date": ref_item.get("effective_date", "N/A"),
+                }
+            )
+        return citation_to_num[key]
+
+    for row_ref in compare_row_refs:
+        for side in ("provider_manual", "policy_update"):
+            for ref_item in row_ref.get(side, []) or []:
+                _register_deterministic_ref(ref_item)
+
+    def _register_writer_citation(cite: str) -> list:
+        numbers = []
+        for piece in _split_writer_citation_pieces(cite):
+            matched_doc = _match_doc_for_citation(piece)
+            if matched_doc:
+                doc_id = str(matched_doc.get("doc_id", "")).strip()
+                display_name = _doc_display_name(matched_doc)
+                key = f"writer-doc::{doc_id or display_name}"
+                if key not in citation_to_num:
+                    citation_to_num[key] = len(citation_order) + 1
+                    citation_order.append(
+                        {
+                            "kind": "writer_resolved",
+                            "key": key,
+                            "display_name": display_name,
+                            "pages": matched_doc.get("pages", "N/A"),
+                            "effective_date": _effective_date_label(matched_doc),
+                        }
+                    )
+                numbers.append(citation_to_num[key])
+                continue
+
+            key = f"writer::{piece}"
+            if key not in citation_to_num:
+                citation_to_num[key] = len(citation_order) + 1
+                citation_order.append({"kind": "writer", "cite": piece})
+            numbers.append(citation_to_num[key])
+        return numbers
+
     def _normalize_text_with_inline_numbers(text: str) -> str:
         # Replace raw inline citation strings with stable numeric references like [1].
         if text is None:
@@ -642,15 +795,44 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
             if not _is_valid_citation_text(cite):
                 # Do not drop unknown citation tokens; dropping can leave broken tails like "or ."
                 return match.group(0)
-            if cite not in citation_to_num:
-                citation_to_num[cite] = len(citation_order) + 1
-                citation_order.append(cite)
-            n = citation_to_num[cite]
-            return f" [{n}]"
+            nums = _register_writer_citation(cite)
+            return f" {' '.join(f'[{n}]' for n in nums)}" if nums else match.group(0)
+
+        def _looks_like_writer_citation(cite: str) -> bool:
+            cleaned = re.sub(r"\s+", " ", (cite or "")).strip()
+            if not cleaned:
+                return False
+            return (
+                "::" in cleaned
+                or ".pdf" in cleaned.lower()
+                or re.search(r"\bmu_[A-Za-z0-9_]+\b", cleaned) is not None
+                or re.search(r"\bVolume\s+\d+\b", cleaned, flags=re.IGNORECASE) is not None
+            )
+
+        def _replace_parenthetical_citation(match):
+            cite = match.group(1).strip()
+            if not _looks_like_writer_citation(cite) or not _is_valid_citation_text(cite):
+                return match.group(0)
+            nums = _register_writer_citation(cite)
+            return f" {' '.join(f'[{n}]' for n in nums)}" if nums else match.group(0)
 
         normalized = re.sub(r"\[([^\[\]]+)\]", _replace_citation, raw)
+        normalized = re.sub(r"\(([^()]*?(?:::|\.pdf|mu_[A-Za-z0-9_]+)[^()]*)\)", _replace_parenthetical_citation, normalized)
         normalized = re.sub(r"\s{2,}", " ", normalized).strip()
+        normalized = re.sub(r"\s+([.,;:!?])", r"\1", normalized)
         return html.escape(normalized)
+
+    def _normalize_first_table_text(text: str, ref_items: list) -> str:
+        cleaned = re.sub(r"\[[^\[\]]+\]", "", str(text or ""))
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        cleaned = re.sub(r"\s+([.,;:!?])", r"\1", cleaned)
+        suffix_numbers = []
+        for ref_item in ref_items or []:
+            n = _register_deterministic_ref(ref_item)
+            if n:
+                suffix_numbers.append(f"[{n}]")
+        suffix = f" {' '.join(suffix_numbers)}" if suffix_numbers else ""
+        return html.escape(cleaned) + suffix
 
     def _normalize_bullet_items(value, empty_text: str) -> str:
         if isinstance(value, str):
@@ -686,13 +868,14 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
         for _, pair in enumerate(aligned_pairs, start=1):
             provider_text = pair.get("provider_manual", "") or "No grounded provider manual evidence was available for this point."
             policy_text = pair.get("policy_update", "") or "No closely matching policy evidence was available for this provider-manual point."
+            row_ref = compare_row_refs[_ - 1] if (_ - 1) < len(compare_row_refs) else {}
             row_html.append(
                 "<tr>"
                 f"<td style=\"padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;\">"
-                f"<ul style=\"margin:0; padding-left:1.2rem;\"><li>{_normalize_text_with_inline_numbers(provider_text)}</li></ul>"
+                f"<ul style=\"margin:0; padding-left:1.2rem;\"><li>{_normalize_first_table_text(provider_text, row_ref.get('provider_manual', []))}</li></ul>"
                 "</td>"
                 f"<td style=\"padding:8px 12px; border:1px solid #ccc; vertical-align:top; color:#333;\">"
-                f"<ul style=\"margin:0; padding-left:1.2rem;\"><li>{_normalize_text_with_inline_numbers(policy_text)}</li></ul>"
+                f"<ul style=\"margin:0; padding-left:1.2rem;\"><li>{_normalize_first_table_text(policy_text, row_ref.get('policy_update', []))}</li></ul>"
                 "</td>"
                 "</tr>"
             )
@@ -757,16 +940,46 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     references_html = ""
     if citation_order:
         ref_items = []
-        for i, cite in enumerate(citation_order, 1):
-            base = cite.split("—", 1)[0].strip()
-            base_name = base.split(":", 1)[0].strip()
-            matched_doc = _match_doc_for_citation(cite)
-            effective_label = _effective_date_label(matched_doc) if matched_doc else _date_from_citation_text(cite)
-            display_cite = re.sub(r"\s*[-\u2013\u2014]\s*\d{4}-\d{2}-\d{2}\s*$", "", str(cite)).strip()
-            ref_items.append(
-                f"<li>[{i}] {html.escape(display_cite)}"
-                f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
-            )
+        for i, entry in enumerate(citation_order, 1):
+            if isinstance(entry, dict) and entry.get("kind") == "deterministic":
+                display_name = html.escape(str(entry.get("title") or "Unknown Document"))
+                pages = html.escape(str(entry.get("pages", "N/A")))
+                effective_label = html.escape(str(entry.get("effective_date", "N/A")))
+                ref_items.append(
+                    f"<li>[{i}] {display_name} (pages {pages})"
+                    f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
+                )
+                continue
+            if isinstance(entry, dict) and entry.get("kind") == "writer_resolved":
+                display_name = html.escape(str(entry.get("display_name") or "Retrieved document snippet"))
+                pages = str(entry.get("pages", "N/A"))
+                effective_label = html.escape(str(entry.get("effective_date") or "N/A"))
+                if pages and pages != "N/A":
+                    ref_items.append(
+                        f"<li>[{i}] {display_name} (pages {html.escape(pages)})"
+                        f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
+                    )
+                else:
+                    ref_items.append(
+                        f"<li>[{i}] {display_name}"
+                        f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
+                    )
+                continue
+            cite = entry.get("cite") if isinstance(entry, dict) else str(entry)
+            humanized = _humanize_writer_citation(cite)
+            display_name = html.escape(str(humanized.get("display_name") or "Retrieved document snippet"))
+            effective_label = html.escape(str(humanized.get("effective_date") or "N/A"))
+            pages = str(humanized.get("pages", "N/A"))
+            if pages and pages != "N/A":
+                ref_items.append(
+                    f"<li>[{i}] {display_name} (pages {html.escape(pages)})"
+                    f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
+                )
+            else:
+                ref_items.append(
+                    f"<li>[{i}] {display_name}"
+                    f"<div style='color:#666; font-size:0.9em;'>Effective date: {effective_label}</div></li>"
+                )
         references_html = (
             "<b>References:</b>"
             f"<ol style='margin-top:0.5rem; padding-left:1.4rem;'>{''.join(ref_items)}</ol>"
@@ -866,13 +1079,19 @@ for msg in st.session_state["compare_history"]:
         retrieved_docs_grouped = msg.get("retrieved_docs_grouped", {})
         formatted_sources = format_retrieved_docs(retrieved_docs) if retrieved_docs else ""
         compare_sections = msg.get("compare_sections", {})
+        compare_row_refs = msg.get("compare_row_refs", [])
+        compare_debug = msg.get("compare_debug", {})
         is_followup = bool(msg.get("is_followup", False))
 
         answer_body = text
         answer_body_is_html = False
         # Render as custom HTML tables whenever valid compare_sections are available.
         if compare_sections and not compare_sections.get("_parse_failed"):
-            answer_body = format_compare_tables(compare_sections, retrieved_docs_grouped=retrieved_docs_grouped)
+            answer_body = format_compare_tables(
+                compare_sections,
+                retrieved_docs_grouped=retrieved_docs_grouped,
+                compare_row_refs=compare_row_refs,
+            )
             answer_body_is_html = True
 
         answer_body_html = answer_body if answer_body_is_html else markdown_to_html(answer_body)
@@ -940,6 +1159,7 @@ for msg in st.session_state["compare_history"]:
 {answer_body_html}
 {"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><ul style='margin-top:0.5rem; padding-left:1.5rem;'>" + formatted_evidence + "</ul>" if evidence_dict else ""}
 {retrieved_sources_html}
+ {format_compare_debug(compare_debug) if compare_debug else ""}
 </div>
 </div>
 """
@@ -950,6 +1170,7 @@ for msg in st.session_state["compare_history"]:
 <div class="chat-bubble assistant">
 {answer_body_html}
 {"" if not evidence_dict else f"<br><br><b>Evidence:</b><br><em style='color: #666; font-size: 0.9em;'>Direct quotes from official documents that support the answer above.</em><ul style='margin-top:0.5rem; padding-left:1.5rem;'>{formatted_evidence}</ul>"}
+ {format_compare_debug(compare_debug) if compare_debug else ""}
 </div>
 </div>
 """
