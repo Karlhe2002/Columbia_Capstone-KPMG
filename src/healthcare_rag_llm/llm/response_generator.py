@@ -3,7 +3,7 @@
 import json
 import re
 from datetime import date, datetime
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 from healthcare_rag_llm.llm.llm_client import GenerationCancelled, LLMClient
 from healthcare_rag_llm.graph_builder.queries import query_chunks
 from healthcare_rag_llm.embedding.HealthcareEmbedding import get_embedding_singleton
@@ -450,38 +450,32 @@ Chunks format:
 [Document Title: <doc_title>] -[Chunk ID: <chunk_id>]-[Effective Date: <effective_date or N/A>]-[pages: <pages>] - [Chunk Content: <chunk_content>]
 
 Task:
-Build a point-to-point row plan. Keep only rows where the provider-manual point and policy point address the same operational topic.
+Create a point-to-point row plan.
 
-Hard rules:
-1) The provider manual side is the anchor for every row.
-2) Only create a row if there is a concrete provider-manual point worth showing.
-3) Row 1 should start from the newest provider-manual evidence among the chunks that directly answer the user's actual question well.
-4) Each row must name exactly one primary provider-manual chunk and exactly one primary policy chunk.
-5) Keep only same-topic rows; do not keep broad or loosely related matches.
-6) "Same topic" means the same billing route, code family, member group, service type, or operational exception.
-7) Partial is allowed only if both sides still address the same operational topic but one side is less specific or only partly confirms it.
-8) If there is no same-topic policy match, do not keep the row.
-9) For broad questions, usually plan 2 to 3 useful rows when the evidence supports distinct, directly relevant sub-topics.
-10) Each row must cover exactly one narrow operational sub-topic.
-11) Keep each point complete and readable.
-12) Never end a point mid-word, mid-phrase, or with a clipped final term.
-13) Also draft a complete headline summary that directly answers the user's question.
-14) First identify the main kind of question the user is asking, then favor rows that answer that question most directly.
-15) Relevance to the user's actual question is more important than covering nearby but secondary topics.
-16) For broad operational questions, prefer higher-level rows before narrower implementation details.
-17) Examples of broad operational row classes include billing pathway / who to bill, other payer or coordination-first rules, and service-specific billing detail or operational exception. Use these as guidance, not as a mandatory fixed order for every question.
-18) Within each row class, still prefer newer provider-manual evidence.
-19) If a slightly older provider-manual chunk answers the question more directly than a newer but only partially relevant chunk, prefer the more directly relevant chunk.
-20) Keep provider_manual_point and policy_point direct but informative, usually 1 to 2 complete sentences.
-21) Include one concrete operational detail when available, such as the billing pathway, member group, code family, field requirement, or limitation.
-22) Add a third row when it still adds a distinct, directly relevant comparison rather than a weak stretch.
-23) Prefer 2 distinct rows over 1 blended row when the evidence clearly supports two different useful sub-topics.
-24) Do not settle for a single narrow row if a second directly relevant row would materially improve the answer to a broad question.
-25) For broad questions, actively look for a second complementary row before stopping at one.
-26) When the question is broad, a second row may be slightly broader or less specific than the first row as long as it still helps answer the user's actual question.
-27) If the best second row is not perfectly parallel but is still materially relevant to the same operational scenario, keep it as partial rather than dropping it.
-28) Do not merge multiple separate sub-topics into one row just to stay short.
-29) Avoid near-duplicate rows, but allow a second row when it adds a distinct operational dimension to the answer.
+Rules for this request:
+- First identify the user's main intent.
+- Then break the question into a few concrete sub-questions.
+- Rank those sub-questions by usefulness to the user's main intent.
+- Start from provider-manual anchor points.
+- Keep only rows that directly help answer the main intent or one of the most useful supporting sub-questions.
+- Use the newest directly relevant provider-manual chunk first for the core question.
+- Use one primary provider-manual chunk and one primary policy chunk per row.
+- Keep only same-sub-question rows.
+- Row 1 should answer the user's main intent as directly as possible.
+- Later rows should answer different supporting sub-questions.
+- For broad questions, prefer the row that best answers the user's main intent, even if one side is only indirect or partial.
+- If the provider-manual evidence is narrower or less direct than the policy evidence for the main-intent row, keep the row and state that limitation instead of replacing it with a cleaner but less useful supporting row.
+- Before creating a row, ask whether both sides truly answer the same operational sub-question or decision point.
+- Do not pair rows just because both sides share broad domain language, repeated document terms, overlapping keywords, or the same general subject area.
+- Surface-level term overlap is not enough. Both sides must address the same rule, pathway, requirement, exception, or operational scenario.
+- For broad questions, usually return 2 to 3 useful rows if the evidence supports them.
+- For broad questions, try to return at least 2 useful rows when the evidence supports a core row plus a supporting row.
+- One strong row is better than several mismatched rows.
+- Do not stop too early if a second directly relevant sub-question would give a fuller answer.
+- Prefer one core-answer row plus one or two supporting rows over a single row that leaves the answer too narrow.
+- If a possible second or third row is still directly relevant but slightly broader, keep it as partial rather than dropping it.
+- Do not keep weak, repetitive, or mixed-topic rows.
+- In match_reason, briefly explain what sub-question the row answers and why the two sides belong in the same row.
 
 Return ONLY valid JSON with exactly this schema:
 {{
@@ -572,96 +566,6 @@ Return ONLY valid JSON with exactly this schema:
             cancel_check=cancel_check,
         )
         return raw, self._parse_compare_row_plan(raw)
-
-    @staticmethod
-    def _looks_chopped_text(value: str) -> bool:
-        text = " ".join(str(value or "").split()).strip()
-        if not text:
-            return True
-        if text[-1] not in ".!?":
-            return True
-        if re.search(r"\b(?:and|or|to|for|with|of|in|on|by|the|this|that|these|those)\s*[.!?]$", text, re.I):
-            return True
-        if re.search(r"\b\w+\s+[.!?]$", text):
-            return True
-        if ResponseGenerator._terminal_token_is_suspiciously_truncated(text):
-            return True
-        if re.search(r"\b[A-Za-z]{1,4}\.$", text):
-            return True
-        if re.search(r"\b(?:and|or|to|for|with|of|in|on|by|the|this|that|these|those)\.$", text, re.I):
-            return True
-        if re.search(r"\b[A-Z]\.$", text):
-            return True
-        return False
-
-    @staticmethod
-    def _topic_is_too_broad(topic: str) -> bool:
-        cleaned = " ".join(str(topic or "").split()).strip().lower()
-        if not cleaned:
-            return True
-        broad_markers = (
-            "general guidance",
-            "overall billing",
-            "general billing",
-            "general managed care guidance",
-            "billing guidance",
-            "policy guidance",
-            "provider guidance",
-            "general pharmacy billing",
-        )
-        return any(marker in cleaned for marker in broad_markers)
-
-    @classmethod
-    def _extract_compare_anchor_terms(cls, *texts: str) -> Set[str]:
-        stop = {
-            "the", "a", "an", "and", "or", "to", "for", "with", "of", "in", "on", "by", "is", "are",
-            "be", "as", "that", "this", "these", "those", "provider", "providers", "manual", "policy",
-            "medicaid", "billing", "bill", "claim", "claims", "payment", "payments", "program",
-            "services", "service", "member", "members", "pharmacy", "pharmacies", "update", "state",
-            "nys", "new", "york", "must", "should", "using", "used", "before", "after", "when",
-            "only", "under", "from", "into", "such", "their", "they", "them",
-        }
-        terms: Set[str] = set()
-        for text in texts:
-            raw = str(text or "")
-            for match in re.findall(r"\b(?:HCPCS|CPT|NDC|CIN|NPI|FFS|MMC|LTC|CBIC|SCC|OPRA|DMEPOS|MEVS)\b", raw, flags=re.I):
-                terms.add(match.lower())
-            for match in re.findall(r"\b\d{3}-[A-Z]{1,3}\b", raw):
-                terms.add(match.lower())
-            for match in re.findall(r"\b[A-Z]\d{4}\b", raw):
-                terms.add(match.lower())
-            for match in re.findall(r"\b\d{4,5}\b", raw):
-                terms.add(match.lower())
-            for word in re.findall(r"[A-Za-z0-9]+", raw.lower()):
-                if len(word) <= 2 or word in stop:
-                    continue
-                terms.add(word)
-        return terms
-
-    @classmethod
-    def _row_same_topic(cls, row: Dict) -> Dict:
-        topic = row.get("topic", "")
-        provider = row.get("provider_manual_point", "")
-        policy = row.get("policy_point", "")
-        provider_terms = cls._extract_compare_anchor_terms(provider)
-        policy_terms = cls._extract_compare_anchor_terms(policy)
-        topic_terms = cls._extract_compare_anchor_terms(topic)
-        shared_terms = provider_terms & policy_terms
-        topic_supported = bool(topic_terms & provider_terms) and bool(topic_terms & policy_terms)
-        provider_topic_overlap = topic_terms & provider_terms
-        policy_topic_overlap = topic_terms & policy_terms
-        same_topic = bool(shared_terms)
-        if not same_topic and topic_supported:
-            same_topic = True
-        if not same_topic and provider_topic_overlap and policy_topic_overlap:
-            same_topic = True
-        return {
-            "same_topic": same_topic,
-            "shared_terms": sorted(shared_terms),
-            "topic_supported": topic_supported,
-            "provider_topic_overlap": sorted(provider_topic_overlap),
-            "policy_topic_overlap": sorted(policy_topic_overlap),
-        }
 
     @classmethod
     def _build_compare_fallback_point(cls, chunk: Optional[Dict], max_chars: int = 280) -> str:
@@ -761,15 +665,6 @@ Return ONLY valid JSON with exactly this schema:
                 row["policy_point"] = cls._build_compare_fallback_point(
                     policy_lookup.get(policy_ids[0])
                 ) or "Relevant policy guidance was retrieved for this point."
-
-            if cls._looks_chopped_text(row.get("provider_manual_point", "")):
-                provider_point = cls._build_compare_fallback_point(provider_lookup.get(provider_ids[0]))
-                if provider_point:
-                    row["provider_manual_point"] = provider_point
-            if cls._looks_chopped_text(row.get("policy_point", "")):
-                policy_point = cls._build_compare_fallback_point(policy_lookup.get(policy_ids[0]))
-                if policy_point:
-                    row["policy_point"] = policy_point
 
             row["policy_match_quality"] = (
                 row.get("policy_match_quality")
