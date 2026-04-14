@@ -1,0 +1,27 @@
+{
+  "Smoke_test_1": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Smoke_test_2": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Smoke_test_3": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Smoke_test_4": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  },
+  "Smoke_test_5": {
+    "question": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition"
+  }
+}

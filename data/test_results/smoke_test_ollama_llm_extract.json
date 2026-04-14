@@ -1,0 +1,1372 @@
+{
+  "test_id_1": {
+    "query_id": "Smoke_test_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines. The provider manual is more up-to-date overall and should guide the user now.\",\n  \"policy_definition\": \"Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01].\",\n  \"provider_manual_definition\": \"All Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for 340B drug claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines, while the provider manual source emphasizes federal law requirements [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01 vs. New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_2": {
+    "query_id": "Smoke_test_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines. The provider manual is more up-to-date overall and should guide the user now.\",\n  \"policy_definition\": \"Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01].\",\n  \"provider_manual_definition\": \"All Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for 340B drug claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines, while the provider manual source emphasizes federal law requirements [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01 vs. New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_3": {
+    "query_id": "Smoke_test_2",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines. The provider manual is more up-to-date overall and should guide the user now, as it was last updated on 2025-10-01.\",\n  \"policy_definition\": \"Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01].\",\n  \"provider_manual_definition\": \"All Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for 340B drug claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines, while the provider manual source emphasizes federal law requirements [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01 vs. New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_4": {
+    "query_id": "Smoke_test_2",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines. The provider manual is more up-to-date overall and should guide the user now, as it was last updated on 2025-10-01.\",\n  \"policy_definition\": \"Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01].\",\n  \"provider_manual_definition\": \"All Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status [New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for 340B drug claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Program – Pharmacy Manual Policy Guidelines, while the provider manual source emphasizes federal law requirements [New York State Medicaid Update February 2024 Volume 40 Number 2:page:1 — 2024-02-01 vs. New York State Medicaid Program: Pharmacy Manual - Policy Guidelines:page:18 — 2025-10-01].\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_5": {
+    "query_id": "Smoke_test_3",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx Pharmacy Benefit Transition Volume 39 Number 4. However, according to the newest provider manual source dated 2025-10-01, all Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status.\",\n  \"policy_definition\": \"[Document Title: New York State Medicaid Update February 2024 Volume 40 Number 2] -[Chunk ID: mu_no2_feb24_pr.pdf::0001]-[Effective Date: 2024-02-01]-[pages: [1]] - [Chunk Content: Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid Update articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor) must be submitted with claim level identifiers and at actual acquisition cost.]\",\n  \"provider_manual_definition\": \"[Document Title: New York State Medicaid Program: Pharmacy Manual - Policy Guidelines] -[Chunk ID: Pharmacy_Policy_Guidelines.pdf::0088]-[Effective Date: 2025-10-01]-[pages: [23]] - [Chunk Content: ***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed to Medicare on behalf of a dual-eligible member.]\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for 340B drug claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Benefit Transition Volume 39 Number 4, while the provider manual source emphasizes federal law requirements.\", \"Difference point 2: The policy source does not explicitly state that enrollment in Medicare type is required for dual-eligible members, while the provider manual source clearly states this requirement.\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_6": {
+    "query_id": "Smoke_test_3",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims. However, according to the newest provider manual source dated 2025-10-01, all Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status. The provider manual is more up-to-date overall and should guide the user now.\",\n  \"policy_definition\": \"[Document Title: New York State Medicaid Update February 2024 Volume 40 Number 2] -[Chunk ID: mu_no2_feb24_pr.pdf::0001]-[Effective Date: 2024-02-01]-[pages: [1]] - [Chunk Content: Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid Update articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor) must be submitted with claim level identifiers and at actual acquisition cost.]\",\n  \"provider_manual_definition\": \"[Document Title: New York State Medicaid Program: Pharmacy Manual - Policy Guidelines] -[Chunk ID: Pharmacy_Policy_Guidelines.pdf::0088]-[Effective Date: 2025-10-01]-[pages: [23]] - [Chunk Content: ***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed to Medicare on behalf of a dual-eligible member.]\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for 340B drug claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Benefit Transition Volume 39 Number 4, while the provider manual source emphasizes federal law requirements.\", \"Difference point 2: The policy source does not explicitly state that enrollment in Medicare type is required for dual-eligible members, while the provider manual source clearly states this requirement.\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_7": {
+    "query_id": "Smoke_test_4",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims. However, according to the newest provider manual source dated 2025-10-01, all Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status. The provider manual is more up-to-date overall and should guide the user now.\",\n  \"policy_definition\": \"[Document Title: New York State Medicaid Update February 2024 Volume 40 Number 2] -[Chunk ID: mu_no2_feb24_pr.pdf::0001]-[Effective Date: 2024-02-01]-[pages: [1]] - [Chunk Content: Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid Update articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor) must be submitted with claim level identifiers and at actual acquisition cost.]\",\n  \"provider_manual_definition\": \"[Document Title: New York State Medicaid Program: Pharmacy Manual - Policy Guidelines] -[Chunk ID: Pharmacy_Policy_Guidelines.pdf::0088]-[Effective Date: 2025-10-01]-[pages: [23]] - [Chunk Content: ***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed to Medicare on behalf of a dual-eligible member.]\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for dual eligible pharmacy claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Benefit Transition Volume 39 Number 4, while the provider manual source emphasizes federal law requirements.\", \"Difference point 2: The policy source does not explicitly state that enrollment in Medicare type is required for dual-eligible members, while the provider manual source clearly states this requirement.\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_8": {
+    "query_id": "Smoke_test_4",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims. However, according to the newest provider manual source dated 2025-10-01, all Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status. The provider manual is more up-to-date overall and should guide the user now.\",\n  \"policy_definition\": \"[Document Title: New York State Medicaid Update February 2024 Volume 40 Number 2] -[Chunk ID: mu_no2_feb24_pr.pdf::0001]-[Effective Date: 2024-02-01]-[pages: [1]] - [Chunk Content: Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid Update articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor) must be submitted with claim level identifiers and at actual acquisition cost.]\",\n  \"provider_manual_definition\": \"[Document Title: New York State Medicaid Program: Pharmacy Manual - Policy Guidelines] -[Chunk ID: Pharmacy_Policy_Guidelines.pdf::0088]-[Effective Date: 2025-10-01]-[pages: [23]] - [Chunk Content: ***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed to Medicare on behalf of a dual-eligible member.]\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for dual eligible pharmacy claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Benefit Transition Volume 39 Number 4, while the provider manual source emphasizes federal law requirements.\", \"Difference point 2: The policy source does not explicitly state that enrollment in Medicare type is required for dual-eligible members, while the provider manual source clearly states this requirement.\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_9": {
+    "query_id": "Smoke_test_5",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims. However, according to the newest provider manual source dated 2025-10-01, all Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status. The provider manual is more up-to-date overall and should guide the user now.\",\n  \"policy_definition\": \"[Document Title: New York State Medicaid Update February 2024 Volume 40 Number 2] -[Chunk ID: mu_no2_feb24_pr.pdf::0001]-[Effective Date: 2024-02-01]-[pages: [1]] - [Chunk Content: Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid Update articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor) must be submitted with claim level identifiers and at actual acquisition cost.]\",\n  \"provider_manual_definition\": \"[Document Title: New York State Medicaid Program: Pharmacy Manual - Policy Guidelines] -[Chunk ID: Pharmacy_Policy_Guidelines.pdf::0088]-[Effective Date: 2025-10-01]-[pages: [23]] - [Chunk Content: ***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed to Medicare on behalf of a dual-eligible member.]\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for dual eligible pharmacy claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Benefit Transition Volume 39 Number 4, while the provider manual source emphasizes federal law requirements.\", \"Difference point 2: The policy source does not explicitly state that enrollment in Medicare type is required for dual-eligible members, while the provider manual source clearly states this requirement.\"],\n  \"caveats\": \"None\"\n}"
+  },
+  "test_id_10": {
+    "query_id": "Smoke_test_5",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonBatchTester-LLMClient-k-3-2",
+    "short_version_id": "smoke_test_ollama_llm_extract",
+    "retrieved_docs": {
+      "policy": [
+        {
+          "chunk_id": "mu_no4_mar23_speced_pr.pdf::0003",
+          "text": "2\n\nPharmacy Providers\nDual Eligible Coverage\nFor NYS Medicaid members who are enrolled in a Medicare Part D drug plan or Medicare Advantage Drug\nContracting (MAPD) plan, NYRx provides prescription drug coverage only for the drugs listed below. To\nview all drugs covered by NYRx for Dual Eligible NYS Medicaid members, providers can refer to the NYS\nDepartment of Health (DOH) “Drugs Covered by NYRx for Dual Eligible Members Effective 10/22/2020” web\npage, located at: https://www.health.ny.gov/health_care/medicaid/program/medicaid_transition/medicare\n_exempt_drugs.htm. All other prescription medications should be reimbursed through the Part D drug plan.\nFor the most up to date coverage information for the products below, providers should refer to the New York\nState Department of Health List of Medicaid Reimbursable Drugs, located at:\nhttps://www.emedny.org/info/fullform.pdf.\nPrescription Drugs:\n• Vitamins\nFolic acid – oral\nHydroxocobalamin – injection\nVitamin B12 – injection/nasal\nVitamin D2 – oral\nVitamin K – oral\n• Cough and Cold\n• Benzonatate\nPlease note: NYRx does not provide dual eligible members with coverage of compounded\nprescriptions.",
+          "chunk_type": "text",
+          "doc_id": "mu_no4_mar23_speced_pr.pdf",
+          "title": "Medicaid Update Special Edition Part Three: NYRx Pharmacy Benefit Transition Volume 39 Number 4",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no4_mar23_speced_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-03-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            2,
+            3
+          ],
+          "score": 0.5718606996312378,
+          "rerank_score": 0.5712659955024719,
+          "final_score": 1.555132269859314,
+          "rank": 1
+        },
+        {
+          "chunk_id": "mu_no2_feb24_pr.pdf::0001",
+          "text": "Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx\nthe NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid\nUpdate articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor)\nmust be submitted with claim level identifiers and at actual acquisition cost. Providers should refer to the\nNYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://\nwww.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, for requirements\nwhen NYS Medicaid is secondary payor. Claim level identifiers are required on eligible 340B purchased drug\nclaims for NYS Medicaid members.\nThrough monitoring real-time claims, NYRx has identified two trends in pharmacy submitted 340B\ndrug claims:\n1.",
+          "chunk_type": "text",
+          "doc_id": "mu_no2_feb24_pr.pdf",
+          "title": "New York State Medicaid Update February 2024 Volume 40 Number 2",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2024/docs/mu_no2_feb24_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2024-02-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            1
+          ],
+          "score": 0.5823737092868064,
+          "rerank_score": 0.4318593442440033,
+          "final_score": 1.371263861656189,
+          "rank": 2
+        },
+        {
+          "chunk_id": "mu_no8_apr23_pr.pdf::0021",
+          "text": "Pharmacy Claims\nFor pharmacy claims, providers should refer to page 15 of the eMedNY New York State Billing Guidelines –\nPharmacy, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Billing_Guide\nlines.pdf. Per page 39 of the eMedNY Prospective Drug Utilization Review/Electronic Claims Capture and\nAdjudication ProDUR/ECCA Provider Manual, located at: https://www.emedny.org/ProviderManuals/\nPharmacy/ProDUR-D.0-ECCA_Provider_Manual/Pro%20DUR%20ECCA%20Provider%20Manual%20\n(D.0).pdf, “when filling prescriptions/orders for a member who is restricted to a primary provider (physician,\nclinic, podiatrist, or dentist) and the primary provider is the prescribing/ordering provider, the NPI of this\nprovider must be entered in the ordering/prescribing field.”\nAdditionally, “if the restricted member was referred by the primary provider to another provider and the\nreferred-to provider is the prescribing/ordering provider, the pharmacy provider must enter the referred-to\nprovider’s NPI in the ordering/prescribing field. The primary provider’s NPI must be entered as the\nreferring/primary care provider.”\nApril 2023 New York State Medicaid Update pg.",
+          "chunk_type": "text",
+          "doc_id": "mu_no8_apr23_pr.pdf",
+          "title": "New York State Medicaid Update April 2023 Volume 39 Number 8",
+          "url": "https://health.ny.gov/health_care/medicaid/program/update/2023/docs/mu_no8_apr23_pr.pdf",
+          "doc_type": "PDF",
+          "category": "Medicaid Update",
+          "doc_class": "policy",
+          "effective_date": "2023-04-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            9
+          ],
+          "score": 0.5727882964500033,
+          "rerank_score": 0.4974314272403717,
+          "final_score": 1.3175562620162964,
+          "rank": 3
+        }
+      ],
+      "provider_manual": [
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0069",
+          "text": "The total Medicare/Medicaid payment to the pharmacy provider will not exceed the amount that the pharmacy\nprovider would have received for a Medicaid-only patient. If the Medicare payment is greater than the Medicaid fee,\nno additional payment will be made.\nNote: The Medicare and Medicaid payment (if any) must be accepted as payment in full. Per state regulation, a\npharmacy provider of a Medicare Part B benefit cannot seek to recover any Medicare Part B deductible, or coinsurance\namounts from Medicare/Medicaid Dually Eligible Individuals.\nMedicare Part D\nMedicare members who also have Medicaid, also known as dual-eligible, must be enrolled in a Medicare Part D\nprescription drug plan to maintain their Medicaid coverage. Medicaid does not cover any class of drugs covered under\nMedicare Part D for full-benefit dual eligible members. Members and their prescribers must work together to find an\nappropriate drug that is covered by the Part D plan or, if necessary, use the Part D plan’s exception and appeals\nprocess to obtain coverage for necessary prescriptions not listed on the plan’s formulary.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            18
+          ],
+          "score": 0.5699649340327219,
+          "rerank_score": 0.8440088033676147,
+          "final_score": 2.75777268409729,
+          "rank": 1
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0083",
+          "text": "However, all Medicaid enrolled pharmacy providers are still required by\nfederal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible\nmembers, regardless of CMS-460 enrollment status.\nPharmacies missing one or more Medicare enrollments, must determine if their business situation or business model\nrequires CMS-855B or CMS-855S Medicare enrollment or both before applying for NY Medicaid Pharmacy enrollment.\nThe Attestation of Need for/Exemption from Medicare Enrollment form #409602 located here:\nhttps://www.emedny.org/info/ProviderEnrollment/ProviderMaintForms/409602_Attestation_Need_Exemption_from_Me\ndicare_Enrollment.pdf enables pharmacy applicants the opportunity to clarify and attest to the need for an exemption\nfrom each type of Medicare enrollment. Note, all community pharmacy applicants would not qualify for exemption, see\ntable below.\nSee Table below, which describes pharmacy type with corresponding expected services and Medicare-type enrollment\nexpected at the time of pharmacy application submission. The more stringent Medicare requirement applies to mixed\n\npharmacy types.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            21,
+            22
+          ],
+          "score": 0.6287937859059043,
+          "rerank_score": 0.20415647327899933,
+          "final_score": 0.932319164276123,
+          "rank": 2
+        },
+        {
+          "chunk_id": "Pharmacy_Policy_Guidelines.pdf::0088",
+          "text": "***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed\nto Medicare on behalf of a dual-eligible member.",
+          "chunk_type": "text",
+          "doc_id": "pharmacy_policy_guidelines.pdf",
+          "title": "New York State Medicaid Program: Pharmacy Manual - Policy Guidelines",
+          "url": "https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf",
+          "doc_type": "PDF",
+          "category": "Pharmacy",
+          "doc_class": "provider_manual",
+          "effective_date": "2025-10-01",
+          "authority": "New York State Department of Health",
+          "pages": [
+            23
+          ],
+          "score": 0.6682618478120053,
+          "rerank_score": 0.0429144948720932,
+          "final_score": 0.7092819213867188,
+          "rank": 3
+        }
+      ]
+    },
+    "answers": "{\n  \"headline_summary\": \"According to the newest policy source dated 2024-02-01, dual eligible pharmacy claims must comply with NYS Medicaid policy for 340B drug claims. However, according to the newest provider manual source dated 2025-10-01, all Medicaid enrolled pharmacy providers are still required by federal law to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members, regardless of CMS-460 enrollment status. The provider manual is more up-to-date overall and should guide the user now.\",\n  \"policy_definition\": \"[Document Title: New York State Medicaid Update February 2024 Volume 40 Number 2] -[Chunk ID: mu_no2_feb24_pr.pdf::0001]-[Effective Date: 2024-02-01]-[pages: [1]] - [Chunk Content: Pharmacy providers must comply with NYS Medicaid policy for 340B drug claims, as outlined in the NYRx the NY Medicaid Pharmacy Program – Pharmacy Manual Policy Guidelines, located at: https://www.emedny.org/ProviderManuals/Pharmacy/PDFS/Pharmacy_Policy_Guidelines.pdf, and Medicaid Update articles. All NCPDP-submitted 340B-purchased drug claims (when NYS Medicaid is primary payor) must be submitted with claim level identifiers and at actual acquisition cost.]\",\n  \"provider_manual_definition\": \"[Document Title: New York State Medicaid Program: Pharmacy Manual - Policy Guidelines] -[Chunk ID: Pharmacy_Policy_Guidelines.pdf::0088]-[Effective Date: 2025-10-01]-[pages: [23]] - [Chunk Content: ***Enrollment in this Medicare type is required when the pharmacy carries one or more items that would be required to be billed to Medicare on behalf of a dual-eligible member.]\",\n  \"similarities\": [\"Similarity point 1: Both sources require pharmacy providers to submit claims and accept assignments for Medicare covered services provided to Medicaid dual eligible members.\", \"Similarity point 2: Both sources emphasize the importance of complying with NYS Medicaid policy for dual eligible pharmacy claims.\"],\n  \"differences\": [\"Difference point 1: The policy source requires compliance with NYRx Pharmacy Benefit Transition Volume 39 Number 4, while the provider manual source emphasizes federal law requirements.\", \"Difference point 2: The policy source does not explicitly state that enrollment in Medicare type is required for dual-eligible members, while the provider manual source clearly states this requirement.\"],\n  \"caveats\": \"None\"\n}"
+  }
+}
