@@ -10,6 +10,7 @@ from tqdm import tqdm
 from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
 from healthcare_rag_llm.llm.llm_client import LLMClient
 from healthcare_rag_llm.llm.response_generator import ResponseGenerator
+from healthcare_rag_llm.utils.api_config import APIConfigManager, get_default_model_for_provider
 
 
 class RAGComparisonBatchTester:
@@ -66,14 +67,10 @@ class RAGComparisonBatchTester:
         self.llm_client = (
             llm_client
             if llm_client is not None
-            else LLMClient(
-                api_key="",
-                provider="ollama",
-                model="llama3.2:3b",
-            )
+            else self._build_default_llm_client()
         )
         
-        self.filter_extractor = build_filter_extractor()
+        self.filter_extractor = build_filter_extractor(llm_client=self.llm_client)
         self.response_generator = ResponseGenerator(
             llm_client=self.llm_client,
             use_reranker=self.use_reranker,
@@ -88,6 +85,31 @@ class RAGComparisonBatchTester:
 
         os.makedirs(self.output_dir, exist_ok=True)
         self.output_path = os.path.join(self.output_dir, f"{self.version_id}.json")
+
+    @staticmethod
+    def _build_default_llm_client() -> LLMClient:
+        gemini_model = get_default_model_for_provider("gemini")
+        env_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+        gemini_api_key = env_api_key
+
+        try:
+            cfg = APIConfigManager().get_provider_config("gemini")
+            configured_api_key = str(cfg.api_key or "").strip()
+            if not gemini_api_key and configured_api_key and configured_api_key.lower() not in {"your-api-key", "changeme"}:
+                gemini_api_key = configured_api_key
+
+            return LLMClient(
+                api_key=gemini_api_key,
+                provider="gemini",
+                model=gemini_model,
+                base_url=cfg.base_url,
+            )
+        except Exception:
+            return LLMClient(
+                api_key=gemini_api_key,
+                provider="gemini",
+                model=gemini_model,
+            )
 
     def run(self) -> Dict[str, Any]:
         tests = self._read_json(self.testing_queries_path)

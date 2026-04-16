@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import date
 from typing import Any, Dict, List, Optional
@@ -187,8 +188,15 @@ class LLMFilterExtractor:
             try:
                 api_config_manager = APIConfigManager()
                 cfg = api_config_manager.get_default_config()
+                api_key = str(cfg.api_key or "").strip()
+                if str(cfg.provider or "").lower() == "gemini":
+                    env_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+                    if env_api_key:
+                        api_key = env_api_key
+                    elif api_key.lower() in {"your-api-key", "changeme"}:
+                        api_key = ""
                 self.llm_client = LLMClient(
-                    api_key=cfg.api_key,
+                    api_key=api_key,
                     model=get_default_model_for_provider(cfg.provider),
                     provider=cfg.provider,
                     base_url=cfg.base_url,

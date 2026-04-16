@@ -103,7 +103,7 @@ def load_rag_pipeline():
         provider=api_config_default.provider,
         base_url=api_config_default.base_url
     )
-    filter_extractor = build_filter_extractor()
+    filter_extractor = build_filter_extractor(llm_client=llm_client)
     return ResponseGenerator(llm_client,filter_extractor=filter_extractor)
 
 def get_rag_pipeline_lazy():

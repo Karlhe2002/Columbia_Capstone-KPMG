@@ -7,7 +7,7 @@ llm_client = LLMClient(api_key="",
                         provider="openai",
                         base_url = "https://api.bltcy.ai/v1")
 
-filter_extractor = build_filter_extractor()
+filter_extractor = build_filter_extractor(llm_client=llm_client)
 
 response_generator = ResponseGenerator(llm_client,filter_extractor=filter_extractor)
 qustion_1 = "When did redetrmination begin for the COVID-19 Public Health Emergency unwind in New York State"
