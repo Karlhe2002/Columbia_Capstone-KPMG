@@ -9,7 +9,7 @@
 - Parse answers into structured sections and attach ground truth.
 
 ```bash
-.venv/bin/python scripts/convert_raw_to_process_compare.py \
+.venv/bin/python scripts/convert_raw_to_processed_compare.py \
     -i data/llm_eval_results_compare/comparison_raw/input_file.json \
     -o data/llm_eval_results_compare/comparison_processed/input_file_processed.json
 ```
