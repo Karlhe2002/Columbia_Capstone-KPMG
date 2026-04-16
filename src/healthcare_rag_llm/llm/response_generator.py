@@ -151,29 +151,8 @@ class ResponseGenerator:
         return fused_hits
 
     @classmethod
-    def _format_hit_for_log(cls, hit: Dict) -> str:
-        title = cls._get_doc_title(hit)
-        pages = hit.get("pages", "N/A")
-        score = float(hit.get("score", 0.0) or 0.0)
-        pieces = [f"score={score:.4f}", f"doc={title}", f"pages={pages}"]
-
-        if hit.get("retrieval_sources"):
-            pieces.append(f"sources={','.join(hit['retrieval_sources'])}")
-        if hit.get("dense_score") is not None:
-            pieces.append(f"dense={float(hit['dense_score']):.4f}")
-        if hit.get("sparse_score") is not None:
-            pieces.append(f"sparse={float(hit['sparse_score']):.4f}")
-        if hit.get("matched_terms"):
-            matched_terms = ", ".join(hit.get("matched_terms", [])[:4])
-            if matched_terms:
-                pieces.append(f"terms={matched_terms}")
-        return " | ".join(pieces)
-
-    @classmethod
     def _log_retrieval_stage(cls, label: str, hits: List[Dict], limit: int = 5) -> None:
-        print(f"[retrieval] {label}: {len(hits or [])} hits")
-        for idx, hit in enumerate((hits or [])[:limit], start=1):
-            print(f"[retrieval]   {idx}. {cls._format_hit_for_log(hit)}")
+        pass
 
     @classmethod
     def _log_retrieval_breakdown(
@@ -188,15 +167,7 @@ class ResponseGenerator:
         final_hits: List[Dict],
         label: str = "qa",
     ) -> None:
-        print("=" * 110)
-        print(f"[retrieval] mode={label}")
-        print(f"[retrieval] question={query}")
-        print(f"[retrieval] retrieval_query={retrieval_query}")
-        print(f"[retrieval] keyword_hints={keyword_hints[:10]}")
-        cls._log_retrieval_stage("dense", dense_hits)
-        cls._log_retrieval_stage("sparse", sparse_hits)
-        cls._log_retrieval_stage("fused_rrf", fused_hits)
-        cls._log_retrieval_stage("final_after_rerank", final_hits)
+        pass
 
     @staticmethod
     def _parse_effective_date(value) -> Optional[date]:

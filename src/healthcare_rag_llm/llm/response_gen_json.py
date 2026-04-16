@@ -128,29 +128,8 @@ def _fuse_ranked_hits_rrf(
     return fused_hits
 
 
-def _format_hit_for_log(hit: Dict[str, Any]) -> str:
-    title = hit.get("title") or hit.get("doc_title") or hit.get("doc_id") or "Unknown Document"
-    pages = hit.get("pages", "N/A")
-    score = float(hit.get("score", 0.0) or 0.0)
-    pieces = [f"score={score:.4f}", f"doc={title}", f"pages={pages}"]
-
-    if hit.get("retrieval_sources"):
-        pieces.append(f"sources={','.join(hit['retrieval_sources'])}")
-    if hit.get("dense_score") is not None:
-        pieces.append(f"dense={float(hit['dense_score']):.4f}")
-    if hit.get("sparse_score") is not None:
-        pieces.append(f"sparse={float(hit['sparse_score']):.4f}")
-    if hit.get("matched_terms"):
-        matched_terms = ", ".join(hit.get("matched_terms", [])[:4])
-        if matched_terms:
-            pieces.append(f"terms={matched_terms}")
-    return " | ".join(pieces)
-
-
 def _log_retrieval_stage(label: str, hits: List[Dict[str, Any]], limit: int = 5) -> None:
-    print(f"[retrieval] {label}: {len(hits or [])} hits")
-    for idx, hit in enumerate((hits or [])[:limit], start=1):
-        print(f"[retrieval]   {idx}. {_format_hit_for_log(hit)}")
+    pass
 
 
 def _log_retrieval_breakdown(
@@ -164,15 +143,7 @@ def _log_retrieval_breakdown(
     final_hits: List[Dict[str, Any]],
     label: str = "qa",
 ) -> None:
-    print("=" * 110)
-    print(f"[retrieval] mode={label}")
-    print(f"[retrieval] question={query}")
-    print(f"[retrieval] retrieval_query={retrieval_query}")
-    print(f"[retrieval] keyword_hints={keyword_hints[:10]}")
-    _log_retrieval_stage("dense", dense_hits)
-    _log_retrieval_stage("sparse", sparse_hits)
-    _log_retrieval_stage("fused_rrf", fused_hits)
-    _log_retrieval_stage("final_after_rerank", final_hits)
+    pass
 
 def _validate_json_payload(data: Any) -> bool:
     """
