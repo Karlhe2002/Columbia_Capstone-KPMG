@@ -266,6 +266,15 @@ class ResponseGenerator:
             + list(filters.get("semantic_keywords") or [])
         )
 
+    @staticmethod
+    def _format_theme_hints(theme_hints: List[str], max_items: int = 8) -> str:
+        cleaned = [
+            " ".join(str(value or "").strip().split())
+            for value in (theme_hints or [])
+            if " ".join(str(value or "").strip().split())
+        ]
+        return ", ".join(cleaned[:max_items]) if cleaned else "None"
+
     @classmethod
     def _build_rerank_query(cls, base_query: str, filters: Dict) -> str:
         keyword_hints = cls._build_keyword_hints(filters)
@@ -416,6 +425,7 @@ class ResponseGenerator:
         cls,
         question: str,
         target_concept: str,
+        theme_hints: str,
         provider_manual_chunks: List[Dict],
         policy_chunks: List[Dict],
     ) -> str:
@@ -431,6 +441,9 @@ Question:
 
 Target concept:
 {target_concept}
+
+Query Understanding Hints:
+- Possible themes / keyword hints: {theme_hints}
 
 Deterministic recency facts:
 - Newest provider-manual chunk id: {newest_provider.get("chunk_id", "N/A") if newest_provider else "N/A"}
@@ -455,11 +468,18 @@ Create a point-to-point row plan.
 Rules for this request:
 - First identify the user's main intent.
 - Then break the question into a few concrete sub-questions.
+- Use the Query Understanding Hints only as guidance for identifying the main intent and useful supporting sub-questions.
+- Do not create a row unless the evidence supports it.
+- Define each row as one concrete operational sub-question, decision point, requirement, exception, or workflow step.
+- Do not use a broad standalone theme label as the row topic unless the evidence itself is that focused.
+- It is acceptable for multiple theme hints to support the same row if they point to the same sub-question.
+- It is acceptable for one broad theme to produce multiple rows if the evidence supports distinct sub-questions.
 - Rank those sub-questions by usefulness to the user's main intent.
 - Start from provider-manual anchor points.
 - Keep only rows that directly help answer the main intent or one of the most useful supporting sub-questions.
 - Use the newest directly relevant provider-manual chunk first for the core question.
 - Use one primary provider-manual chunk and one primary policy chunk per row.
+- Choose the single best provider-manual chunk and the single best policy chunk for that row's sub-question; do not spread one row across multiple evidence topics.
 - Keep only same-sub-question rows.
 - Row 1 should answer the user's main intent as directly as possible.
 - Later rows should answer different supporting sub-questions.
@@ -483,7 +503,7 @@ Return ONLY valid JSON with exactly this schema:
   "row_plan": [
     {{
       "row_id": "row_1",
-      "topic": "one short sub-topic label",
+      "topic": "one short label for one concrete sub-question or decision point",
       "provider_manual_chunk_ids": ["exactly_one_primary_chunk_id"],
       "provider_manual_point": "one concise grounded provider-manual point",
       "policy_chunk_ids": ["exactly_one_primary_chunk_id"],
@@ -547,6 +567,7 @@ Return ONLY valid JSON with exactly this schema:
         self,
         question: str,
         target_concept: str,
+        theme_hints: str,
         provider_manual_chunks: List[Dict],
         policy_chunks: List[Dict],
         cancel_check=None,
@@ -554,6 +575,7 @@ Return ONLY valid JSON with exactly this schema:
         prompt = self._build_compare_row_generator_prompt(
             question=question,
             target_concept=target_concept,
+            theme_hints=theme_hints,
             provider_manual_chunks=provider_manual_chunks,
             policy_chunks=policy_chunks,
         )
@@ -1246,12 +1268,14 @@ Formatting requirements (strict):
 
         policy_ordered = self._sort_chunks_newest_first(policy_final)
         provider_manual_ordered = self._sort_chunks_newest_first(provider_manual_final)
+        planner_theme_hints = self._format_theme_hints(keyword_hints)
         # For compare mode, keep chunk text intact so the model does not see chopped evidence mid-sentence.
         target_concept = resolved_concept or "the requested concept"
 
         planner_raw, planner_row_plan = self.generate_compare_row_plan(
             question=question,
             target_concept=target_concept,
+            theme_hints=planner_theme_hints,
             provider_manual_chunks=provider_manual_ordered,
             policy_chunks=policy_ordered,
             cancel_check=cancel_check,
