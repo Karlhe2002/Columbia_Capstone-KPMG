@@ -5,7 +5,7 @@ import re
 from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
 from healthcare_rag_llm.llm.llm_client import GenerationCancelled, LLMClient
-from healthcare_rag_llm.graph_builder.queries import query_chunks
+from healthcare_rag_llm.graph_builder.queries import query_chunks, query_chunks_sparse
 from healthcare_rag_llm.embedding.HealthcareEmbedding import get_embedding_singleton
 from healthcare_rag_llm.reranking.reranker import apply_rerank_to_chunks
 from healthcare_rag_llm.llm.chat_history import ChatHistory
@@ -283,6 +283,82 @@ class ResponseGenerator:
         return f"{base_query}\nKey themes: {', '.join(keyword_hints[:8])}"
 
     @staticmethod
+    def _chunk_fusion_key(chunk: Dict) -> str:
+        chunk_id = str(chunk.get("chunk_id") or "").strip()
+        if chunk_id:
+            return chunk_id
+        doc_id = str(chunk.get("doc_id") or "").strip()
+        pages = str(chunk.get("pages") or "").strip()
+        return f"{doc_id}::{pages}"
+
+    @classmethod
+    def _fuse_ranked_hits_rrf(
+        cls,
+        dense_hits: List[Dict],
+        sparse_hits: List[Dict],
+        *,
+        rrf_k: int = 60,
+        max_results: Optional[int] = None,
+    ) -> List[Dict]:
+        fused: Dict[str, Dict] = {}
+
+        for source_name, hits in (("dense", dense_hits or []), ("sparse", sparse_hits or [])):
+            for rank, hit in enumerate(hits, start=1):
+                key = cls._chunk_fusion_key(hit)
+                if key not in fused:
+                    base = dict(hit)
+                    base["retrieval_sources"] = []
+                    base["rrf_score"] = 0.0
+                    base.setdefault("dense_score", None)
+                    base.setdefault("sparse_score", None)
+                    fused[key] = base
+
+                entry = fused[key]
+                entry["rrf_score"] += 1.0 / (rrf_k + rank)
+                if source_name not in entry["retrieval_sources"]:
+                    entry["retrieval_sources"].append(source_name)
+                if source_name == "dense":
+                    entry["dense_score"] = hit.get("score")
+                    entry.setdefault("vector_score", hit.get("vector_score", hit.get("score")))
+                else:
+                    entry["sparse_score"] = hit.get("score")
+                    entry["matched_terms"] = hit.get("matched_terms", entry.get("matched_terms"))
+
+        fused_hits = list(fused.values())
+        fused_hits.sort(
+            key=lambda hit: (
+                float(hit.get("rrf_score", 0.0) or 0.0),
+                float(hit.get("dense_score", 0.0) or 0.0),
+                float(hit.get("sparse_score", 0.0) or 0.0),
+            ),
+            reverse=True,
+        )
+        for hit in fused_hits:
+            hit["score"] = float(hit.get("rrf_score", 0.0) or 0.0)
+        if max_results is not None:
+            return fused_hits[:max_results]
+        return fused_hits
+
+    @classmethod
+    def _log_retrieval_stage(cls, label: str, hits: List[Dict], limit: int = 5) -> None:
+        pass
+
+    @classmethod
+    def _log_retrieval_breakdown(
+        cls,
+        *,
+        query: str,
+        retrieval_query: str,
+        keyword_hints: List[str],
+        dense_hits: List[Dict],
+        sparse_hits: List[Dict],
+        fused_hits: List[Dict],
+        final_hits: List[Dict],
+        label: str = "qa",
+    ) -> None:
+        pass
+
+    @staticmethod
     def _parse_effective_date(value) -> Optional[date]:
         if not value:
             return None
@@ -443,7 +519,7 @@ Target concept:
 {target_concept}
 
 Query Understanding Hints:
-- Possible themes / keyword hints: {theme_hints}
+- Possible high-level search themes: {theme_hints}
 
 Deterministic recency facts:
 - Newest provider-manual chunk id: {newest_provider.get("chunk_id", "N/A") if newest_provider else "N/A"}
@@ -990,11 +1066,10 @@ Return ONLY valid JSON with exactly these keys:
         # 1. Encode query as vector
         # Keep retrieval stable while we iterate on query understanding.
         query_vec = self._get_embedder().encode([question])["dense_vecs"][0].tolist()
-        
-        # 2. Retrieve more chunks initially (for reranking)
+
+        # 2. Retrieve dense+sparse candidates, then fuse before reranking.
         initial_k = rerank_top_k if self.use_reranker else top_k
-        # retrieved_chunks = query_chunks(query_vec, top_k=initial_k)
-        retrieved_chunks = query_chunks(
+        dense_chunks = query_chunks(
             query_vec,
             top_k=initial_k,
             authority_names=filters.get("authority_names"),
@@ -1003,6 +1078,21 @@ Return ONLY valid JSON with exactly these keys:
             min_effective_date=filters.get("min_effective_date"),
             max_effective_date=filters.get("max_effective_date"),
             keywords=keyword_hints,
+        )
+        sparse_chunks = query_chunks_sparse(
+            retrieval_query,
+            top_k=initial_k,
+            authority_names=filters.get("authority_names"),
+            doc_titles=filters.get("doc_titles"),
+            doc_types=filters.get("doc_types"),
+            min_effective_date=filters.get("min_effective_date"),
+            max_effective_date=filters.get("max_effective_date"),
+            keywords=keyword_hints,
+        )
+        retrieved_chunks = self._fuse_ranked_hits_rrf(
+            dense_chunks,
+            sparse_chunks,
+            max_results=max(initial_k * 2, initial_k),
         )
 
         # 3. Apply reranking if enabled
@@ -1013,10 +1103,20 @@ Return ONLY valid JSON with exactly these keys:
                 combine_with_dense=True,  
                 alpha=0.3,  
                 text_key="text",
-                dense_score_key="score"
+                    dense_score_key="score"
             )
         #4 Take top k chunks
         final_chunks = retrieved_chunks[:top_k]
+        self._log_retrieval_breakdown(
+            query=question,
+            retrieval_query=retrieval_query,
+            keyword_hints=keyword_hints,
+            dense_hits=dense_chunks,
+            sparse_hits=sparse_chunks,
+            fused_hits=retrieved_chunks,
+            final_hits=final_chunks,
+            label="qa",
+        )
         if cancel_check and cancel_check():
             raise GenerationCancelled()
         
@@ -1229,17 +1329,39 @@ Formatting requirements (strict):
         policy_filters = {**base_filters, "doc_classes": ["policy"]}
         provider_manual_filters = {**base_filters, "doc_classes": ["provider_manual"]}
 
-        policy_chunks = query_chunks(
+        policy_dense_chunks = query_chunks(
             query_vec,
             top_k=initial_k,
             search_k=source_search_k,
             **policy_filters,
         )
-        provider_manual_chunks = query_chunks(
+        policy_sparse_chunks = query_chunks_sparse(
+            retrieval_query,
+            top_k=initial_k,
+            search_k=source_search_k,
+            **policy_filters,
+        )
+        provider_manual_dense_chunks = query_chunks(
             query_vec,
             top_k=initial_k,
             search_k=source_search_k,
             **provider_manual_filters,
+        )
+        provider_manual_sparse_chunks = query_chunks_sparse(
+            retrieval_query,
+            top_k=initial_k,
+            search_k=source_search_k,
+            **provider_manual_filters,
+        )
+        policy_chunks = self._fuse_ranked_hits_rrf(
+            policy_dense_chunks,
+            policy_sparse_chunks,
+            max_results=max(initial_k * 2, initial_k),
+        )
+        provider_manual_chunks = self._fuse_ranked_hits_rrf(
+            provider_manual_dense_chunks,
+            provider_manual_sparse_chunks,
+            max_results=max(initial_k * 2, initial_k),
         )
 
         if self.use_reranker and policy_chunks:
@@ -1263,12 +1385,32 @@ Formatting requirements (strict):
 
         policy_final = policy_chunks[:top_k_per_source]
         provider_manual_final = provider_manual_chunks[:top_k_per_source]
+        self._log_retrieval_breakdown(
+            query=question,
+            retrieval_query=retrieval_query,
+            keyword_hints=keyword_hints,
+            dense_hits=policy_dense_chunks,
+            sparse_hits=policy_sparse_chunks,
+            fused_hits=policy_chunks,
+            final_hits=policy_final,
+            label="compare_policy",
+        )
+        self._log_retrieval_breakdown(
+            query=question,
+            retrieval_query=retrieval_query,
+            keyword_hints=keyword_hints,
+            dense_hits=provider_manual_dense_chunks,
+            sparse_hits=provider_manual_sparse_chunks,
+            fused_hits=provider_manual_chunks,
+            final_hits=provider_manual_final,
+            label="compare_provider_manual",
+        )
         if cancel_check and cancel_check():
             raise GenerationCancelled()
 
         policy_ordered = self._sort_chunks_newest_first(policy_final)
         provider_manual_ordered = self._sort_chunks_newest_first(provider_manual_final)
-        planner_theme_hints = self._format_theme_hints(keyword_hints)
+        planner_theme_hints = self._format_theme_hints(filters.get("search_themes") or [])
         # For compare mode, keep chunk text intact so the model does not see chopped evidence mid-sentence.
         target_concept = resolved_concept or "the requested concept"
 
