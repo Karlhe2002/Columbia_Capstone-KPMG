@@ -9,7 +9,7 @@ class LLMClient:
         self.model = model
         self.base_url = base_url
 
-        if self.provider in ("openai", "deepseek"):
+        if self.provider == "openai":
             self.client = openai.OpenAI(api_key=api_key, base_url=base_url)
         elif self.provider == "gemini":
             genai.configure(api_key=api_key)
@@ -19,12 +19,12 @@ class LLMClient:
             self.session = requests.Session()
             self.ollama_url = (base_url or "http://localhost:11434").rstrip("/")
         else:
-            raise ValueError("Unsupported provider: choose 'openai', 'deepseek', 'gemini', or 'ollama'")
+            raise ValueError("Unsupported provider: choose 'openai', 'gemini', or 'ollama'")
 
     def chat(self, user_prompt: str = None, system_prompt: str = None, messages: list = None,temperature = 0.1) -> str:
 
         if messages is not None:
-            if self.provider in ("openai", "deepseek"):
+            if self.provider == "openai":
                 resp = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
@@ -43,7 +43,7 @@ class LLMClient:
                 data = r.json()
                 return data["message"]["content"]
         else:
-            if self.provider in ("openai", "deepseek"):
+            if self.provider == "openai":
                 messages = []
                 if system_prompt:
                     messages.append({"role": "system", "content": system_prompt})
@@ -71,9 +71,6 @@ class LLMClient:
 
 """
 sample usage: 
-
-# DeepSeek-R1 7B
-llm = LLMClient(api_key="", provider="ollama", model="deepseek-r1:7b")
 
 # Llama 3.3 70B
 llm = LLMClient(api_key="", provider="ollama", model="llama3.3:70b")
