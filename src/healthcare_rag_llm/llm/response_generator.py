@@ -543,10 +543,15 @@ Create a point-to-point row plan.
 
 Rules for this request:
 - First identify the user's main intent.
-- Then break the question into a few concrete sub-questions.
-- Use the Query Understanding Hints only as guidance for identifying the main intent and useful supporting sub-questions.
+- Then use the high-level search themes to propose a small number of candidate supporting sub-questions.
+- Treat the search themes as topic cues, not as row titles by themselves.
+- A search theme should help you ask: "What concrete operational question is this theme pointing to?"
+- Convert broad themes into narrower, answerable sub-questions before selecting chunks.
 - Do not create a row unless the evidence supports it.
 - Define each row as one concrete operational sub-question, decision point, requirement, exception, or workflow step.
+- Do not substitute a narrower pharmacy subdomain, such as long-term care, vaccines, diabetic supplies, or another special case, for the user's main question unless the question explicitly asks about that subdomain.
+- If the evidence does not directly answer the user's main billing pathway or decision point, say that limitation clearly and avoid building rows around narrower examples as if they were the main answer.
+- If two chunks share the same broad theme but describe different billing scenarios, workflows, or rules, do not place them in the same row.
 - Do not use a broad standalone theme label as the row topic unless the evidence itself is that focused.
 - It is acceptable for multiple theme hints to support the same row if they point to the same sub-question.
 - It is acceptable for one broad theme to produce multiple rows if the evidence supports distinct sub-questions.
@@ -558,10 +563,12 @@ Rules for this request:
 - Choose the single best provider-manual chunk and the single best policy chunk for that row's sub-question; do not spread one row across multiple evidence topics.
 - Keep only same-sub-question rows.
 - Row 1 should answer the user's main intent as directly as possible.
+- Do not let Row 1 drift into a narrower example or special-case scenario unless that is the clearest direct answer to the user's stated question.
 - Later rows should answer different supporting sub-questions.
 - For broad questions, prefer the row that best answers the user's main intent, even if one side is only indirect or partial.
 - If the provider-manual evidence is narrower or less direct than the policy evidence for the main-intent row, keep the row and state that limitation instead of replacing it with a cleaner but less useful supporting row.
 - Before creating a row, ask whether both sides truly answer the same operational sub-question or decision point.
+- If you cannot state the shared sub-question in one clear sentence, the row is too broad or mismatched and should be dropped.
 - Do not pair rows just because both sides share broad domain language, repeated document terms, overlapping keywords, or the same general subject area.
 - Surface-level term overlap is not enough. Both sides must address the same rule, pathway, requirement, exception, or operational scenario.
 - For broad questions, usually return 2 to 3 useful rows if the evidence supports them.
