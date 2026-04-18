@@ -242,47 +242,6 @@ class ResponseGenerator:
         return cleaned.strip()
 
     @staticmethod
-    def _dedupe_terms(values: List[str], max_items: int = 12) -> List[str]:
-        out = []
-        seen = set()
-        for value in values or []:
-            cleaned = " ".join(str(value or "").strip().split())
-            if not cleaned:
-                continue
-            lowered = cleaned.lower()
-            if lowered in seen:
-                continue
-            seen.add(lowered)
-            out.append(cleaned)
-            if len(out) >= max_items:
-                break
-        return out
-
-    @classmethod
-    def _build_keyword_hints(cls, filters: Dict) -> List[str]:
-        return cls._dedupe_terms(
-            list(filters.get("keywords") or [])
-            + list(filters.get("search_themes") or [])
-            + list(filters.get("semantic_keywords") or [])
-        )
-
-    @staticmethod
-    def _format_theme_hints(theme_hints: List[str], max_items: int = 8) -> str:
-        cleaned = [
-            " ".join(str(value or "").strip().split())
-            for value in (theme_hints or [])
-            if " ".join(str(value or "").strip().split())
-        ]
-        return ", ".join(cleaned[:max_items]) if cleaned else "None"
-
-    @classmethod
-    def _build_rerank_query(cls, base_query: str, filters: Dict) -> str:
-        keyword_hints = cls._build_keyword_hints(filters)
-        if not keyword_hints:
-            return base_query
-        return f"{base_query}\nKey themes: {', '.join(keyword_hints[:8])}"
-
-    @staticmethod
     def _parse_effective_date(value) -> Optional[date]:
         if not value:
             return None
@@ -425,7 +384,6 @@ class ResponseGenerator:
         cls,
         question: str,
         target_concept: str,
-        theme_hints: str,
         provider_manual_chunks: List[Dict],
         policy_chunks: List[Dict],
     ) -> str:
@@ -441,9 +399,6 @@ Question:
 
 Target concept:
 {target_concept}
-
-Query Understanding Hints:
-- Possible high-level search themes: {theme_hints}
 
 Deterministic recency facts:
 - Newest provider-manual chunk id: {newest_provider.get("chunk_id", "N/A") if newest_provider else "N/A"}
@@ -467,18 +422,16 @@ Create a point-to-point row plan.
 
 Rules for this request:
 - First identify the user's main intent.
-- Then use the high-level search themes to propose a small number of candidate supporting sub-questions.
-- Treat the search themes as topic cues, not as row titles by themselves.
-- A search theme should help you ask: "What concrete operational question is this theme pointing to?"
-- Convert broad themes into narrower, answerable sub-questions before selecting chunks.
+- Then break the question into a small number of concrete candidate supporting sub-questions.
+- Use the question and retrieved evidence to decide which candidate sub-questions are actually answerable.
 - Do not create a row unless the evidence supports it.
 - Define each row as one concrete operational sub-question, decision point, requirement, exception, or workflow step.
 - Do not substitute a narrower pharmacy subdomain, such as long-term care, vaccines, diabetic supplies, or another special case, for the user's main question unless the question explicitly asks about that subdomain.
 - If the evidence does not directly answer the user's main billing pathway or decision point, say that limitation clearly and avoid building rows around narrower examples as if they were the main answer.
 - If two chunks share the same broad theme but describe different billing scenarios, workflows, or rules, do not place them in the same row.
 - Do not use a broad standalone theme label as the row topic unless the evidence itself is that focused.
-- It is acceptable for multiple theme hints to support the same row if they point to the same sub-question.
-- It is acceptable for one broad theme to produce multiple rows if the evidence supports distinct sub-questions.
+- It is acceptable for multiple evidence cues to support the same row if they point to the same sub-question.
+- It is acceptable for one broad question area to produce multiple rows if the evidence supports distinct sub-questions.
 - Rank those sub-questions by usefulness to the user's main intent.
 - Start from provider-manual anchor points.
 - Keep only rows that directly help answer the main intent or one of the most useful supporting sub-questions.
@@ -574,7 +527,6 @@ Return ONLY valid JSON with exactly this schema:
         self,
         question: str,
         target_concept: str,
-        theme_hints: str,
         provider_manual_chunks: List[Dict],
         policy_chunks: List[Dict],
         cancel_check=None,
@@ -582,7 +534,6 @@ Return ONLY valid JSON with exactly this schema:
         prompt = self._build_compare_row_generator_prompt(
             question=question,
             target_concept=target_concept,
-            theme_hints=theme_hints,
             provider_manual_chunks=provider_manual_chunks,
             policy_chunks=policy_chunks,
         )
@@ -991,8 +942,7 @@ Return ONLY valid JSON with exactly these keys:
         filters = self.filter_extractor.extract(question) if self.filter_extractor else {}
         retrieval_query = (filters.get("retrieval_query") or question).strip()
         normalized_query = (filters.get("normalized_query") or question).strip()
-        rerank_query = self._build_rerank_query(normalized_query, filters)
-        keyword_hints = self._build_keyword_hints(filters)
+        rerank_query = question
 
         # 1. Encode query as vector
         # Keep retrieval stable while we iterate on query understanding.
@@ -1009,7 +959,7 @@ Return ONLY valid JSON with exactly these keys:
             doc_types=filters.get("doc_types"),
             min_effective_date=filters.get("min_effective_date"),
             max_effective_date=filters.get("max_effective_date"),
-            keywords=keyword_hints,
+            keywords=filters.get("keywords"),
         )
 
         # 3. Apply reranking if enabled
@@ -1102,7 +1052,6 @@ Formatting requirements (strict):
             "query_understanding": {
                 "retrieval_query": retrieval_query,
                 "normalized_query": normalized_query,
-                "search_themes": keyword_hints,
                 "filters": filters,
             },
         }
@@ -1218,8 +1167,7 @@ Formatting requirements (strict):
         default_query = resolved_concept or question
         retrieval_query = (filters.get("retrieval_query") or default_query).strip()
         normalized_query = (filters.get("normalized_query") or question).strip()
-        rerank_query = self._build_rerank_query(normalized_query, filters)
-        keyword_hints = self._build_keyword_hints(filters)
+        rerank_query = question
         query_vec = self._get_embedder().encode([default_query])["dense_vecs"][0].tolist()
         initial_k = rerank_top_k if self.use_reranker else top_k_per_source
 
@@ -1229,7 +1177,7 @@ Formatting requirements (strict):
             "doc_types": filters.get("doc_types"),
             "min_effective_date": filters.get("min_effective_date"),
             "max_effective_date": filters.get("max_effective_date"),
-            "keywords": keyword_hints,
+            "keywords": filters.get("keywords"),
         }
 
         source_search_k = max(initial_k * 5, initial_k)
@@ -1275,14 +1223,12 @@ Formatting requirements (strict):
 
         policy_ordered = self._sort_chunks_newest_first(policy_final)
         provider_manual_ordered = self._sort_chunks_newest_first(provider_manual_final)
-        planner_theme_hints = self._format_theme_hints(filters.get("search_themes") or [])
         # For compare mode, keep chunk text intact so the model does not see chopped evidence mid-sentence.
         target_concept = resolved_concept or "the requested concept"
 
         planner_raw, planner_row_plan = self.generate_compare_row_plan(
             question=question,
             target_concept=target_concept,
-            theme_hints=planner_theme_hints,
             provider_manual_chunks=provider_manual_ordered,
             policy_chunks=policy_ordered,
             cancel_check=cancel_check,
@@ -1354,7 +1300,6 @@ Formatting requirements (strict):
             "query_understanding": {
                 "retrieval_query": retrieval_query,
                 "normalized_query": normalized_query,
-                "search_themes": keyword_hints,
                 "filters": filters,
             },
             "retrieved_docs": {
