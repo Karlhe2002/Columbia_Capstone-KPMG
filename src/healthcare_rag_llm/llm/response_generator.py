@@ -428,8 +428,8 @@ Rules for this request:
 - Define each row as one concrete operational sub-question, decision point, requirement, exception, or workflow step.
 - Do not substitute a narrower pharmacy subdomain, such as long-term care, vaccines, diabetic supplies, or another special case, for the user's main question unless the question explicitly asks about that subdomain.
 - If the evidence does not directly answer the user's main billing pathway or decision point, say that limitation clearly and avoid building rows around narrower examples as if they were the main answer.
-- If two chunks share the same broad theme but describe different billing scenarios, workflows, or rules, do not place them in the same row.
-- Do not use a broad standalone theme label as the row topic unless the evidence itself is that focused.
+- If two chunks share the same broad topic but describe different billing scenarios, workflows, or rules, do not place them in the same row.
+- Do not use a broad standalone topic label as the row topic unless the evidence itself is that focused.
 - It is acceptable for multiple evidence cues to support the same row if they point to the same sub-question.
 - It is acceptable for one broad question area to produce multiple rows if the evidence supports distinct sub-questions.
 - Rank those sub-questions by usefulness to the user's main intent.
