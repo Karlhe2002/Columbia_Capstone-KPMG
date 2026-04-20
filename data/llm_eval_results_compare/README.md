@@ -1,6 +1,12 @@
 # Comparison Eval Pipeline
 
-## One-shot pipeline
+## 1) Prepare raw data
+- Because different experiment adjustments were run on different branches, copy the compare outputs from the corresponding branch's testing pipeline at the same output location in that branch (usually `data/test_results/comparison_version_update.json`) into:
+    `data/llm_eval_results_compare/comparison_raw/input_file.json`
+- The `input_file` is a placeholder for the branch-specific feature or experiment name.
+- All input file should be renamed to `branch_name_model.json` (for example `dense_sparse_gemini.json`)
+
+## 2) One-shot pipeline
 - If you want to run all three steps in one command, use the wrapper:
 
 ```bash
@@ -9,8 +15,6 @@
     --provider openai_official \
     --model gpt-4o-mini
 ```
-
-- This assumes the raw JSON is already in `data/llm_eval_results_compare/comparison_raw/`, then writes the processed and LLM eval outputs under the matching `comparison_processed/` and `comparison_llm_eval_results/` folders.
 
 - You can run only selected files (not all) by passing multiple `-i` values:
 
@@ -31,13 +35,9 @@
     --model gpt-4o-mini
 ```
 
-# If the one-shot pipeline does not work, run the following
-## 1) Prepare raw data
-- Because different experiment adjustments were run on different branches, copy the compare outputs from the corresponding branch's testing pipeline at the same output location in that branch (usually `data/test_results/comparison_version_update.json`) into:
-    `data/llm_eval_results_compare/comparison_raw/input_file.json`
-- The `input_file` is a placeholder for the branch-specific feature or experiment name.
+# If the one-shot pipeline does not work, run the following:
 
-## 2) raw -> processed
+## 1) raw -> processed
 - Parse answers into structured sections and attach ground truth.
 
 ```bash
@@ -57,7 +57,7 @@
     -g "data/llm_eval_results_compare/Q&A_ground_truth.csv"
 ```
 
-## 3) processed -> llm eval
+## 2) processed -> llm eval
 - Evaluation entry script: `scripts/llm_evaluation_compare.py`
 - Evaluation logic: `src/healthcare_rag_llm/evaluate/llm_evaluate_compare.py`
 
