@@ -1,5 +1,37 @@
 # Comparison Eval Pipeline
 
+## One-shot pipeline
+- If you want to run all three steps in one command, use the wrapper:
+
+```bash
+.venv/bin/python scripts/compare_eval_pipeline.py \
+    -i data/llm_eval_results_compare/comparison_raw/comparison_version_update.json \
+    --provider openai_official \
+    --model gpt-4o-mini
+```
+
+- This assumes the raw JSON is already in `data/llm_eval_results_compare/comparison_raw/`, then writes the processed and LLM eval outputs under the matching `comparison_processed/` and `comparison_llm_eval_results/` folders.
+
+- You can run only selected files (not all) by passing multiple `-i` values:
+
+```bash
+.venv/bin/python scripts/compare_eval_pipeline.py \
+    -i data/llm_eval_results_compare/comparison_raw/exp_a.json \
+       data/llm_eval_results_compare/comparison_raw/exp_c.json \
+    --provider openai_official \
+    --model gpt-4o-mini
+```
+
+- You can also run files by suffix under `comparison_raw` (for example all files ending with `_llama.json`):
+
+```bash
+.venv/bin/python scripts/compare_eval_pipeline.py \
+    --suffix _llama.json \
+    --provider openai_official \
+    --model gpt-4o-mini
+```
+
+# If the one-shot pipeline does not work, run the following
 ## 1) Prepare raw data
 - Because different experiment adjustments were run on different branches, copy the compare outputs from the corresponding branch's testing pipeline at the same output location in that branch (usually `data/test_results/comparison_version_update.json`) into:
     `data/llm_eval_results_compare/comparison_raw/input_file.json`
