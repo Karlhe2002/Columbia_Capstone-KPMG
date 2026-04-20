@@ -1,13 +1,13 @@
 # Comparison Eval Pipeline
 
 ## 1) Prepare raw data
-- Because different experiment adjustments were run on different branches, copy the compare outputs from the corresponding branch's testing pipeline at the same output location in that branch (usually `data/test_results/comparison_version_update.json`) into:
+- Because different experiment adjustments were run on different branches, copy the compare outputs from the corresponding branch's testing pipeline at the same output location in that branch (usually `data/test_results/result.json`) into:
     `data/llm_eval_results_compare/comparison_raw/input_file.json`
-- The `input_file` is a placeholder for the branch-specific feature or experiment name.
-- All input file should be renamed to `branch_name_model.json` (for example `dense_sparse_gemini.json`)
+- The `result.json` and `input_file` is a placeholder for the branch-specific feature or experiment name.
+- All input files should be renamed to `branch_name_model.json` (for example `dense_sparse_gemini.json`)
 
 ## 2) One-shot pipeline
-- If you want to run all three steps in one command, use the wrapper:
+- If you want to run all files in `data/llm_eval_results_compare/comparison_raw` in one command, use the wrapper:
 
 ```bash
 .venv/bin/python scripts/compare_eval_pipeline.py \
@@ -35,7 +35,7 @@
     --model gpt-4o-mini
 ```
 
-# If the one-shot pipeline does not work, run the following:
+# Debug / Step-by-step pipeline (recommended for troubleshooting)
 
 ## 1) raw -> processed
 - Parse answers into structured sections and attach ground truth.
