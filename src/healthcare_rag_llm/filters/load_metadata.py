@@ -2,11 +2,14 @@
 
 import pandas as pd
 from pathlib import Path
+from typing import Optional
+
 from healthcare_rag_llm.filters.llm_filter_extractor import LLMFilterExtractor as FilterExtractor
+from healthcare_rag_llm.llm.llm_client import LLMClient
 
 DATA_DIR = Path("data/metadata")
 
-def build_filter_extractor() -> FilterExtractor:
+def build_filter_extractor(llm_client: Optional[LLMClient] = None) -> FilterExtractor:
     """Load CSV files and build FilterExtractor."""
     # 1. Load metadata_filled.csv
     meta_df = pd.read_csv(DATA_DIR / "metadata_filled.csv")
@@ -30,5 +33,6 @@ def build_filter_extractor() -> FilterExtractor:
     return FilterExtractor(
         authority_map=authority_map,
         acronym_map=acronym_map,
-        doc_metadata=doc_metadata
+        doc_metadata=doc_metadata,
+        llm_client=llm_client,
     )
