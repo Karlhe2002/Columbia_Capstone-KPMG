@@ -31,8 +31,7 @@ def main():
         description="Run LLM-based evaluation on answer_compare_definitions test results",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-        """,   # XXX: waiting for the testing data. refer to llm_evaluate_compare.py
+        """,
     )
 
     parser.add_argument("-t", "--test_results", required=True, help="Path to compare_definitions test results JSON")

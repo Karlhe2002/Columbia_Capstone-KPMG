@@ -185,34 +185,16 @@ def _extract_sentence_by_keyword(text: str, keyword: str) -> str:
     return ""
 
 
-def _augment_definitions_from_headline(sections: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    If definition starts with citation marker, prepend a relevant sentence from
-    headline_summary so downstream evaluators get semantic content plus citation.
-    """
-    headline_summary = str(sections.get("headline_summary", "")).strip()
-    policy_definition = str(sections.get("policy_definition", "")).strip()
-    provider_definition = str(sections.get("provider_manual_definition", "")).strip()
-
-    if (not policy_definition) or policy_definition.startswith("[Document"):
-        policy_sentence = _extract_sentence_by_keyword(headline_summary, "policy")
-        if policy_sentence:
-            if policy_definition and policy_sentence not in policy_definition:
-                policy_definition = f"{policy_sentence}\n{policy_definition}"
-            elif not policy_definition:
-                policy_definition = policy_sentence
-
-    if (not provider_definition) or provider_definition.startswith("[Document"):
-        provider_sentence = _extract_sentence_by_keyword(headline_summary, "provider")
-        if provider_sentence:
-            if provider_definition and provider_sentence not in provider_definition:
-                provider_definition = f"{provider_sentence}\n{provider_definition}"
-            elif not provider_definition:
-                provider_definition = provider_sentence
-
-    sections["policy_definition"] = policy_definition
-    sections["provider_manual_definition"] = provider_definition
-    return sections
+def _get_with_alias(d: Dict[str, Any], primary_key: str, alias_keys: List[str]) -> str:
+    """Get value from dict trying primary key first, then alias keys. Return stripped string."""
+    result = d.get(primary_key)
+    if result:
+        return str(result).strip()
+    for alias_key in alias_keys:
+        result = d.get(alias_key)
+        if result:
+            return str(result).strip()
+    return ""
 
 
 def _parse_answer_payload(answer: Any) -> Optional[Dict[str, Any]]:
@@ -312,17 +294,29 @@ def _parse_compare_sections(answer: Any) -> Dict[str, Any]:
         if not comparison:
             comparison = similarities + differences
 
+        # Try to extract policy & provider_manual from aligned_pairs if available
+        policy_def = _get_with_alias(payload, "policy_definition", ["policy_update"])
+        provider_manual_def = _get_with_alias(payload, "provider_manual_definition", ["provider_manual"])
+        
+        # If not found at top level, try to extract from aligned_pairs
+        if not policy_def and not provider_manual_def:
+            aligned_pairs = payload.get("aligned_pairs", [])
+            if aligned_pairs and isinstance(aligned_pairs, list) and len(aligned_pairs) > 0:
+                first_pair = aligned_pairs[0]
+                if isinstance(first_pair, dict):
+                    policy_def = first_pair.get("policy_update", "") or first_pair.get("policy_definition", "")
+                    provider_manual_def = first_pair.get("provider_manual", "") or first_pair.get("provider_manual_definition", "")
+
         sections = {
             "headline_summary": str(payload.get("headline_summary", "")).strip(),
-            "policy_definition": str(payload.get("policy_definition", "")).strip(),
-            "provider_manual_definition": str(payload.get("provider_manual_definition", "")).strip(),
+            "policy_definition": policy_def,
+            "provider_manual_definition": provider_manual_def,
             "similarities": similarities,
             "differences": differences,
             "comparison": comparison,
-            "evidence_quoted": _to_string_list(payload.get("evidence_quoted", [])),
             "caveats": str(payload.get("caveats", "")).strip() or None,
         }
-        return _augment_definitions_from_headline(sections)
+        return sections
 
     answer = _normalize_answer(str(answer))
 
@@ -372,7 +366,7 @@ def _parse_compare_sections(answer: Any) -> Dict[str, Any]:
         "evidence_quoted": _extract_evidence(evidence_block),
         "caveats": caveats,
     }
-    return _augment_definitions_from_headline(sections)
+    return sections
 
 
 def convert_json_to_json(

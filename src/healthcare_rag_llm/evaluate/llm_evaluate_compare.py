@@ -512,10 +512,18 @@ def evaluate_compare_test_results(
     ground_truth: Dict[str, Any] = {}
     if ground_truth_path and Path(ground_truth_path).exists():
         print(f"Loading ground truth from: {ground_truth_path}")
-        with open(ground_truth_path, "r", encoding="utf-8") as f:
-            gt_data = json.load(f)
-            ground_truth = gt_data if isinstance(gt_data, dict) else {}
-        print(f"Loaded {len(ground_truth)} ground truth entries")
+        try:
+            # utf-8-sig handles files that start with BOM.
+            with open(ground_truth_path, "r", encoding="utf-8-sig") as f:
+                gt_data = json.load(f)
+                ground_truth = gt_data if isinstance(gt_data, dict) else {}
+            print(f"Loaded {len(ground_truth)} ground truth entries")
+        except json.JSONDecodeError:
+            print(
+                "Warning: ground truth is not a JSON object file. "
+                "Skipping external ground truth for eval step."
+            )
+            ground_truth = {}
 
     evaluator = LLMEvaluator(llm_client)
     evaluation_results = {
