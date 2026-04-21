@@ -1,30 +1,28 @@
-import openai
-import google.generativeai as genai
-import requests
-
-
 class LLMClient:
-    def __init__(self, api_key: str, base_url: str = None, model: str = "gpt-5", provider: str = "openai"):
+    def __init__(self, api_key: str, base_url: str = None, model: str = "gpt-5.4-mini-2026-03-17", provider: str = "openai"):
         self.provider = provider.lower()
         self.model = model
         self.base_url = base_url
 
-        if self.provider in ("openai", "deepseek"):
+        if self.provider == "openai":
+            import openai
             self.client = openai.OpenAI(api_key=api_key, base_url=base_url)
         elif self.provider == "gemini":
+            import google.generativeai as genai
             genai.configure(api_key=api_key)
             self.client = genai.GenerativeModel(model)
         elif self.provider == "ollama":
+            import requests
             # Ollama uses a simple HTTP API; no SDK client object
             self.session = requests.Session()
             self.ollama_url = (base_url or "http://localhost:11434").rstrip("/")
         else:
-            raise ValueError("Unsupported provider: choose 'openai', 'deepseek', 'gemini', or 'ollama'")
+            raise ValueError("Unsupported provider: choose 'openai', 'gemini', or 'ollama'")
 
     def chat(self, user_prompt: str = None, system_prompt: str = None, messages: list = None,temperature = 0.1) -> str:
 
         if messages is not None:
-            if self.provider in ("openai", "deepseek"):
+            if self.provider == "openai":
                 resp = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
@@ -43,7 +41,7 @@ class LLMClient:
                 data = r.json()
                 return data["message"]["content"]
         else:
-            if self.provider in ("openai", "deepseek"):
+            if self.provider == "openai":
                 messages = []
                 if system_prompt:
                     messages.append({"role": "system", "content": system_prompt})
@@ -70,10 +68,7 @@ class LLMClient:
                 return data["message"]["content"]
 
 """
-sample usage: 
-
-# DeepSeek-R1 7B
-llm = LLMClient(api_key="", provider="ollama", model="deepseek-r1:7b")
+sample usage:
 
 # Llama 3.3 70B
 llm = LLMClient(api_key="", provider="ollama", model="llama3.3:70b")

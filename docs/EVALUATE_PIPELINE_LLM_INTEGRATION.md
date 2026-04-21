@@ -34,7 +34,7 @@ results_df = pipeline.run_batch_experiments(experiments)
 ```python
 pipeline = EvaluatePipeline(
     enable_llm_eval=True,
-    llm_eval_model="gpt-5"
+    llm_eval_model="gpt-5.4-mini-2026-03-17"
 )
 results_df = pipeline.run_batch_experiments(experiments)
 
@@ -56,7 +56,7 @@ results_df = pipeline.run_batch_experiments(experiments)
 ```python
 pipeline = EvaluatePipeline(
     enable_llm_eval=True,
-    llm_eval_model="gpt-5",
+    llm_eval_model="gpt-5.4-mini-2026-03-17",
     llm_eval_limit=3  # Only evaluate first 3 queries per experiment
 )
 results_df = pipeline.run_batch_experiments(experiments)
@@ -94,7 +94,7 @@ results_df = pipeline.run_batch_experiments(experiments)
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `enable_llm_eval` | bool | `False` | Enable LLM-based evaluation |
-| `llm_eval_model` | str | `"gpt-5"` | Model to use for evaluation |
+| `llm_eval_model` | str | `"gpt-5.4-mini-2026-03-17"` | Model to use for evaluation |
 | `llm_eval_provider` | str | `None` | API provider (None = use default from config) |
 | `llm_eval_limit` | int\|None | `None` | Limit tests to evaluate (None = all) |
 | `llm_eval_timeout` | int | `3600` | Timeout for LLM eval in seconds |
@@ -227,7 +227,7 @@ Best LLM overall score: exp_001_semantic_k5_noRerank_gpt-5
 
 ### Cost Impact (Approximate)
 
-Assuming gpt-5 at ~$0.002 per query:
+Assuming the default model at ~$0.002 per query:
 - Traditional only: ~$0.02 per experiment
 - + LLM eval (all): ~$0.13 per experiment (+$0.11)
 - + LLM eval (limit=3): ~$0.05 per experiment (+$0.03)
@@ -361,7 +361,7 @@ def main():
     # To:
     pipeline = EvaluatePipeline(
         enable_llm_eval=True,
-        llm_eval_model="gpt-5",
+        llm_eval_model="gpt-5.4-mini-2026-03-17",
         llm_eval_limit=3  # or None for all
     )
 

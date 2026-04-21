@@ -50,9 +50,10 @@ USER_PROMPT_TEMPLATE = (
 def build_llm_client() -> LLMClient:
     api_config_manager = APIConfigManager()
     cfg = api_config_manager.get_default_config()
+    default_model = api_config_manager._config.get("default_model", "gpt-5.4-mini-2026-03-17")
     return LLMClient(
         api_key=cfg.api_key,
-        model="gpt-5",
+        model=default_model,
         provider=cfg.provider,
         base_url=cfg.base_url,
     )

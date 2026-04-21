@@ -52,7 +52,7 @@ class APIConfigManager:
     
     def get_default_config(self) -> APIConfig:
         """Get default configuration"""
-        default_provider = self._config.get("default_provider", "bltcy")
+        default_provider = self._config.get("default_provider", "openai_official")
         return self.get_provider_config(default_provider)
     
     def list_available_providers(self) -> list:
@@ -68,12 +68,11 @@ def get_default_model_for_provider(provider: str) -> str:
     """Map a provider type to a sensible default model."""
     provider = (provider or "").lower()
     provider_to_model = {
-        "openai": "gpt-5",
-        "deepseek": "deepseek-chat",
+        "openai": "gpt-5.4-mini-2026-03-17",
         "gemini": "gemini-2.5-flash",
         "ollama": "llama3.2:3b",
     }
-    return provider_to_model.get(provider, "gpt-5")
+    return provider_to_model.get(provider, "gpt-5.4-mini-2026-03-17")
 
 
 def load_api_config(config_path: str = "configs/api_config.yaml") -> Dict[str, Any]:
