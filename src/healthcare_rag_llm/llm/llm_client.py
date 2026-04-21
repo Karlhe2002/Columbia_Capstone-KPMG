@@ -1,8 +1,3 @@
-import openai
-import google.generativeai as genai
-import requests
-
-
 class LLMClient:
     def __init__(self, api_key: str, base_url: str = None, model: str = "gpt-5.4-mini-2026-03-17", provider: str = "openai"):
         self.provider = provider.lower()
@@ -10,11 +5,14 @@ class LLMClient:
         self.base_url = base_url
 
         if self.provider == "openai":
+            import openai
             self.client = openai.OpenAI(api_key=api_key, base_url=base_url)
         elif self.provider == "gemini":
+            import google.generativeai as genai
             genai.configure(api_key=api_key)
             self.client = genai.GenerativeModel(model)
         elif self.provider == "ollama":
+            import requests
             # Ollama uses a simple HTTP API; no SDK client object
             self.session = requests.Session()
             self.ollama_url = (base_url or "http://localhost:11434").rstrip("/")
