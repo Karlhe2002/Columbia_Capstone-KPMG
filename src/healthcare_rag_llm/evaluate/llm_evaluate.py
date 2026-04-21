@@ -569,12 +569,12 @@ if __name__ == "__main__":
 
     config = load_api_config()
     provider_config = config["api_providers"][config["default_provider"]]
-    model_config = config["models"]["gpt-5"]
+    default_model = config.get("default_model", "gpt-5.4-mini-2026-03-17")
 
     llm_client = LLMClient(
         api_key=provider_config["api_key"],
         base_url=provider_config["base_url"],
-        model="gpt-5",
+        model=default_model,
         provider=provider_config["provider"]
     )
 

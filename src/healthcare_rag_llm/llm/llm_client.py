@@ -4,7 +4,7 @@ import requests
 
 
 class LLMClient:
-    def __init__(self, api_key: str, base_url: str = None, model: str = "gpt-5", provider: str = "openai"):
+    def __init__(self, api_key: str, base_url: str = None, model: str = "gpt-5.4-mini-2026-03-17", provider: str = "openai"):
         self.provider = provider.lower()
         self.model = model
         self.base_url = base_url

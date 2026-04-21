@@ -20,7 +20,7 @@ Usage:
     python scripts/llm_evaluation.py --test_results data/test_results/exp_001.json --output data/llm_eval_results/exp_001_llm_eval.json --limit 5
 
     # Use specific model
-    python scripts/llm_evaluation.py --test_results data/test_results/exp_001.json --output data/llm_eval_results/exp_001_llm_eval.json --model gpt-4
+    python scripts/llm_evaluation.py --test_results data/test_results/exp_001.json --output data/llm_eval_results/exp_001_llm_eval.json --model gpt-5.4-mini-2026-03-17
 """
 
 import argparse
@@ -51,7 +51,7 @@ Examples:
   python scripts/llm_evaluation.py -t data/test_results/exp_001.json -o data/llm_eval/exp_001.json --limit 3
 
   # Use specific model
-  python scripts/llm_evaluation.py -t data/test_results/exp_001.json -o data/llm_eval/exp_001.json --model gpt-4
+  python scripts/llm_evaluation.py -t data/test_results/exp_001.json -o data/llm_eval/exp_001.json --model gpt-5.4-mini-2026-03-17
         """
     )
 
@@ -75,8 +75,8 @@ Examples:
 
     parser.add_argument(
         "--model",
-        default="gpt-5",
-        help="Model to use for evaluation (default: gpt-5)"
+        default="gpt-5.4-mini-2026-03-17",
+        help="Model to use for evaluation (default: gpt-5.4-mini-2026-03-17)"
     )
 
     parser.add_argument(
@@ -118,7 +118,7 @@ Examples:
         sys.exit(1)
 
     # Determine provider
-    provider_name = args.provider or config.get("default_provider", "bltcy")
+    provider_name = args.provider or config.get("default_provider", "openai_official")
     if provider_name not in config["api_providers"]:
         print(f"Error: Provider '{provider_name}' not found in config")
         print(f"Available providers: {list(config['api_providers'].keys())}")

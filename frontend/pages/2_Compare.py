@@ -89,9 +89,9 @@ def load_rag_pipeline():
     if not model:
         provider_to_model = {
             "gemini": "gemini-2.5-flash",
-            "openai": "gpt-4.1-mini-2025-04-14",
+            "openai": "gpt-5.4-mini-2026-03-17",
         }
-        model = provider_to_model.get(provider, "gpt-4.1-mini-2025-04-14")
+        model = provider_to_model.get(provider, "gpt-5.4-mini-2026-03-17")
     llm_client = LLMClient(
         api_key=api_config_default.api_key,
         model=model,

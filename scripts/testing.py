@@ -1,6 +1,7 @@
 from healthcare_rag_llm.testing.generate_test_result import RAGBatchTester
 from healthcare_rag_llm.embedding.HealthcareEmbedding import HealthcareEmbedding
 from healthcare_rag_llm.llm.llm_client import LLMClient
+from healthcare_rag_llm.utils.api_config import APIConfigManager
 
 def main():
     # ==== Configuration Section ====
@@ -11,11 +12,12 @@ def main():
 
     # Embedding and LLM setup
     embedding_method = HealthcareEmbedding
+    api_cfg = APIConfigManager().get_default_config()
     llm_client = LLMClient(
-        api_key="",                # Add API key if needed
-        provider="openai",         # e.g., openai, anthropic, ollama,
-        base_url="https://api.bltcy.ai/v1",
-        model="gpt-5"        # model name used by your LLM provider
+        api_key=api_cfg.api_key,
+        provider=api_cfg.provider,
+        base_url=api_cfg.base_url,
+        model=api_cfg.model_name or "gpt-5.4-mini-2026-03-17",
     )
 
     # Retrieval and test parameters

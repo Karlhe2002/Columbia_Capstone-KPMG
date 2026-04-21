@@ -75,11 +75,11 @@ def get_default_model_for_provider(provider: str) -> str:
     """Map a provider type to a sensible default model."""
     provider = (provider or "").lower()
     provider_to_model = {
-        "openai": "gpt-4.1-mini-2025-04-14",
+        "openai": "gpt-5.4-mini-2026-03-17",
         "gemini": "gemini-2.5-flash",
         "ollama": "llama3.2:3b",
     }
-    return provider_to_model.get(provider, "gpt-4.1-mini-2025-04-14")
+    return provider_to_model.get(provider, "gpt-5.4-mini-2026-03-17")
 
 
 def load_api_config(config_path: str = "configs/api_config.yaml") -> Dict[str, Any]:

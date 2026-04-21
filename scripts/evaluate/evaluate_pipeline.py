@@ -48,7 +48,7 @@ class EvaluatePipeline:
                  timeout_test: int = 1800,      # 30 minutes for testing
                  # === LLM Evaluation Parameters ===
                  enable_llm_eval: bool = False,          # Enable LLM-based evaluation
-                 llm_eval_model: str = "gpt-5",          # Model for evaluation
+                 llm_eval_model: str = "gpt-5.4-mini-2026-03-17",          # Model for evaluation
                  llm_eval_provider: str = None,          # API provider (None = use default)
                  llm_eval_limit: Optional[int] = None,   # Limit number of tests to evaluate (None = all)
                  llm_eval_timeout: int = 3600            # Timeout for LLM evaluation (seconds)
@@ -81,7 +81,7 @@ class EvaluatePipeline:
             from healthcare_rag_llm.llm.llm_client import LLMClient
 
             config = load_api_config()
-            provider_name = llm_eval_provider or config.get("default_provider", "bltcy")
+            provider_name = llm_eval_provider or config.get("default_provider", "openai_official")
             provider_config = config["api_providers"][provider_name]
 
             self.llm_eval_client = LLMClient(
@@ -467,8 +467,7 @@ def main():
 
     # LLM configurations - Use API configuration manager
     llm_configs = [
-        LLMConfig("gpt-5", api_manager.get_model_config("gpt-5")),  # Fix: Use APIConfig
-        #LLMConfig("gpt-4", api_manager.get_model_config("gpt-4"))  # Fix: Use APIConfig
+        LLMConfig("gpt-5.4-mini-2026-03-17", api_manager.get_model_config("gpt-5.4-mini-2026-03-17")),
     ]
 
     # Generate all combinations
@@ -493,7 +492,7 @@ def main():
     # === Enable LLM Evaluation ===
     pipeline = EvaluatePipeline(
         enable_llm_eval=True,           
-        llm_eval_model="gpt-5",        
+        llm_eval_model="gpt-5.4-mini-2026-03-17",        
         llm_eval_limit=None
     )
     print(f"\n{'='*80}")
