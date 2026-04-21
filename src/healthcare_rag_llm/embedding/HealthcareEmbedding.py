@@ -26,6 +26,21 @@ def get_embedding_singleton():
         _embedding_singleton = HealthcareEmbedding()
     return _embedding_singleton
 
+
+def _resolve_local_or_repo_id(repo_id: str) -> str:
+    """Return local snapshot directory if the model is already cached, else
+    the original repo id so the loader can fetch it from the Hub.
+
+    Loading from a local directory completely bypasses huggingface.co, which
+    avoids the ~23s ProxyError retry loop on networks where the Hub is
+    unreachable (e.g. behind a restrictive proxy).
+    """
+    try:
+        from huggingface_hub import snapshot_download
+        return snapshot_download(repo_id=repo_id, local_files_only=True)
+    except Exception:
+        return repo_id
+
 class HealthcareEmbedding:
     """
     BGE-M3 embedding model with automatic hardware detection.
@@ -96,7 +111,10 @@ class HealthcareEmbedding:
         # Load the model
         print(f"Loading BGE-M3 model (BAAI/bge-m3)...")
         print(f"  This may take 5-15 seconds on first run...")
-        self.model = BGEM3FlagModel('BAAI/bge-m3', use_fp16=use_fp16, device=device)
+        model_path = _resolve_local_or_repo_id('BAAI/bge-m3')
+        if model_path != 'BAAI/bge-m3':
+            print(f"  Using local cache: {model_path}")
+        self.model = BGEM3FlagModel(model_path, use_fp16=use_fp16, device=device)
         print(f"[OK] Model loaded successfully!\n")
     
     def encode(self,text:list[str],return_dense=True,return_sparse=True,return_colbert_vecs=True):

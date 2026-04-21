@@ -39,6 +39,19 @@ DEFAULT_MAX_LENGTH = int(os.getenv("RERANKER_MAX_LENGTH", "512"))
 DEFAULT_BATCH_SIZE = int(os.getenv("RERANKER_BATCH_SIZE", "64"))
 
 
+def _resolve_local_or_repo_id(repo_id: str) -> str:
+    """Return local snapshot directory if cached, else the original repo id.
+
+    Bypasses huggingface.co when the model is already on disk, so we avoid
+    the long retry loop when the Hub is unreachable behind a proxy.
+    """
+    try:
+        from huggingface_hub import snapshot_download
+        return snapshot_download(repo_id=repo_id, local_files_only=True)
+    except Exception:
+        return repo_id
+
+
 @dataclass
 class RerankConfig:
     """
@@ -68,8 +81,9 @@ class Reranker:
     def __init__(self, config: Optional[RerankConfig] = None):
         self.config = config or RerankConfig()
         device = self.config.device or ("cuda" if torch.cuda.is_available() else "cpu")
+        model_path = _resolve_local_or_repo_id(self.config.model_name)
         self._model = CrossEncoder(
-            self.config.model_name,
+            model_path,
             max_length=self.config.max_length,
             device=device,
         )
