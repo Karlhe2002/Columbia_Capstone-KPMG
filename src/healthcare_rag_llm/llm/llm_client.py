@@ -19,15 +19,31 @@ class LLMClient:
         else:
             raise ValueError("Unsupported provider: choose 'openai', 'gemini', or 'ollama'")
 
-    def chat(self, user_prompt: str = None, system_prompt: str = None, messages: list = None,temperature = 0.1) -> str:
+    def chat(
+        self,
+        user_prompt: str = None,
+        system_prompt: str = None,
+        messages: list = None,
+        temperature: float = 0.1,
+        json_mode: bool = False,
+    ) -> str:
+        """Send a chat completion request.
+
+        json_mode=True opts into provider-native structured-output enforcement
+        so the model is guaranteed to return a syntactically valid JSON object
+        (no markdown fences, no leading/trailing prose, no truncated braces).
+        Currently only honoured by the OpenAI provider; other providers ignore
+        the flag because they don't expose an equivalent guarantee here.
+        Caller must still ensure the prompt itself describes the expected JSON
+        shape — OpenAI also requires the word "json" to appear in the prompt.
+        """
 
         if messages is not None:
             if self.provider == "openai":
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=temperature
-                )
+                kwargs = {"model": self.model, "messages": messages, "temperature": temperature}
+                if json_mode:
+                    kwargs["response_format"] = {"type": "json_object"}
+                resp = self.client.chat.completions.create(**kwargs)
                 return resp.choices[0].message.content
             elif self.provider == "gemini":
                 conversation = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in messages])
@@ -47,7 +63,10 @@ class LLMClient:
                     messages.append({"role": "system", "content": system_prompt})
                 if user_prompt:
                     messages.append({"role": "user", "content": user_prompt})
-                resp = self.client.chat.completions.create(model=self.model, messages=messages)
+                kwargs = {"model": self.model, "messages": messages}
+                if json_mode:
+                    kwargs["response_format"] = {"type": "json_object"}
+                resp = self.client.chat.completions.create(**kwargs)
                 return resp.choices[0].message.content
 
             elif self.provider == "gemini":

@@ -753,7 +753,7 @@ Internal decision process:
         else:
             messages.append({"role": "user", "content": user_msg})
 
-        llm_response = self.llm_client.chat(messages=messages)
+        llm_response = self.llm_client.chat(messages=messages, json_mode=True)
         self.chat_history.add("assistant", llm_response)
         compare_sections = self._parse_compare_response(llm_response)
 
