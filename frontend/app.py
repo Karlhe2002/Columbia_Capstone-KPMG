@@ -113,34 +113,6 @@ def get_rag_pipeline_lazy():
     return st.session_state["rag_pipeline"]
 
 
-def _remove_none_caveats(text: str) -> str:
-    """
-    Remove the Caveats section only when model explicitly returns None.
-    This follows prompt contract and avoids semantic guessing.
-    """
-    # Remove one-line forms like "Caveats: None" (case-insensitive, optional markdown)
-    single_line_pattern = re.compile(
-        r"(?im)^\s*\*{0,2}caveats\*{0,2}\s*:\s*(?:\*{0,2}_?`?none`?_?\*{0,2})\s*$"
-    )
-    text = re.sub(single_line_pattern, "", text)
-
-    # Remove section forms like:
-    # Caveats:
-    # None
-    pattern = re.compile(
-        r"(?ims)^\s*\*{0,2}caveats\*{0,2}\s*:?\s*\n(?P<body>.*?)(?=^\s*\*{0,2}(answer|evidence(?:\s*\([^)]*\))?|retrieved sources?)\*{0,2}\s*:?\s*$|\Z)"
-    )
-    m = pattern.search(text)
-    if not m:
-        return text
-
-    body = m.group("body").strip()
-    normalized = re.sub(r"^[\s\-*•]+", "", body).strip().lower()
-    if normalized in {"none", "**none**", "_none_", "`none`"}:
-        return (text[:m.start()] + text[m.end():]).strip()
-    return text
-
-
 def _extract_answer_only(text: str) -> str:
     """
     Keep only the answer portion of the model output so UI-controlled Evidence
@@ -151,7 +123,6 @@ def _extract_answer_only(text: str) -> str:
 
     cleaned = text.strip()
     cleaned = re.sub(r'^answer\s*:?\s*', '', cleaned, count=1, flags=re.IGNORECASE).strip()
-    cleaned = _remove_none_caveats(cleaned)
 
     evidence_match = re.search(r'(?im)^\s*\*{0,2}evidence(?:\s*\([^)]*\))?\*{0,2}\s*:?\s*$', cleaned)
     if evidence_match:

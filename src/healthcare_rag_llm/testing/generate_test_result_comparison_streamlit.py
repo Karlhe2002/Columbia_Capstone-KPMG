@@ -37,11 +37,18 @@ Output JSON schema per row (matching the schema agreed upon):
     }
 
 The `answers` field holds the parsed compare_sections dict (headline_summary,
-policy_definition, provider_manual_definition, similarities, differences,
-caveats) — i.e. the structured content the Streamlit Compare page actually
-renders on screen. The raw LLM string, follow-up questions and query
-understanding are intentionally dropped because the raw string is just the
-JSON-encoded form of compare_sections, and the other fields are UI-only.
+policy_definition, provider_manual_definition, similarities, differences) —
+i.e. the structured content the Streamlit Compare page actually renders on
+screen. The raw LLM string, follow-up questions and query understanding are
+intentionally dropped because the raw string is just the JSON-encoded form of
+compare_sections, and the other fields are UI-only.
+
+Example usage:
+.venv/bin/python -m healthcare_rag_llm.testing.generate_test_result_comparison_streamlit \
+  --input data/testing_queries/test_query_compare.json \
+  --output-dir data/test_results \
+  --version-id comparison_streamlit_openai_gpt5.4mini_60q \
+  --repeats 5
 """
 
 from __future__ import annotations
@@ -97,17 +104,22 @@ class RAGComparisonStreamlitBatchTester:
 
     @staticmethod
     def _build_frontend_llm_client() -> LLMClient:
-        """Build the LLMClient exactly the way frontend/pages/2_Compare.py does."""
+        """Build the LLMClient the same way frontend/pages/2_Compare.py does,
+        but prefer the explicit `default_model` declared in
+        `configs/api_config.yaml` so the batch run is locked to whatever model
+        the project is currently standardised on."""
         api_config_manager = APIConfigManager()
         api_config_default = api_config_manager.get_default_config()
         provider = (api_config_default.provider or "").lower()
-        model = api_config_default.model_name
+
+        model = api_config_manager._config.get("default_model")
         if not model:
             provider_to_model = {
                 "gemini": "gemini-2.5-flash",
                 "openai": "gpt-5.4-mini-2026-03-17",
             }
             model = provider_to_model.get(provider, "gpt-5.4-mini-2026-03-17")
+
         return LLMClient(
             api_key=api_config_default.api_key,
             model=model,

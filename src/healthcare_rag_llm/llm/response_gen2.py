@@ -109,7 +109,6 @@ Authoritative rules (follow all):
 7) Output sections (exact labels and order, **each exactly once**):
    - Answer
    - Evidence (quoted)
-   - Caveats (if any)
    - What this means
 8) Citations: Every bullet in **Answer** and every quoted line in **Evidence**
    ends with a citation like [doc or doc:page — Mon DD, YYYY].
@@ -142,8 +141,6 @@ Follow this workflow step-by-step:
 - Evidence (quoted)
   • Quote the exact line(s) used. Do not paraphrase.
   • Each quote ends with a citation in the format [doc or doc:page — Mon DD, YYYY].
-- Caveats (if any)
-  • List missing pages, ambiguous scope, or document conflicts. If none, write "None."
 - What this means
   • 1–2 provider-friendly bullet(s) summarizing how to act. No new facts.
 
@@ -156,7 +153,7 @@ Important prohibitions:
 - Do not generalize across programs (FFS vs Managed Care) unless explicitly stated.
 - Do not alter codes, dollar amounts, dates, or field names.
 
-Now produce the 4 sections.
+Now produce the 3 sections.
 """).strip()
 
 @dataclass
@@ -227,7 +224,7 @@ class StrictResponseGenerator:
             print(tabulate(rows, headers=["rank", "doc", "date", "preview"]))
 
         # 6) Light guardrails: check sections + citation pattern and append gentle nudge if missing
-        required = ["Answer", "Evidence (quoted)", "Caveats (if any)", "What this means"]
+        required = ["Answer", "Evidence (quoted)", "What this means"]
         sections_ok = all(h in ans for h in required)
 
         # Example citation: [Jan25_pr:7 — Jan 25, 2025]

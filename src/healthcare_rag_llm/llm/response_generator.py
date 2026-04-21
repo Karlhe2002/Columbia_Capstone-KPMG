@@ -424,7 +424,6 @@ Use the provided Effective Date metadata to determine which grounded source is t
 Output sections (exactly):
 - Answer
 - Evidence (quoted)
-- Caveats (if any)
 Each bullet must have a citation like [doc_title or doc_title:page — Mon DD, YYYY].
 Answer requirements:
 - Start with a direct answer to the user's question.
@@ -439,17 +438,13 @@ Internal decision process:
 - Identify the most relevant chunks for the question.
 - Use Effective Date metadata to find the newest relevant source.
 - Answer from the newest relevant source first, then add older grounded context only if it helps.
-If Caveats has no meaningful content, output exactly:
-Caveats
-None
 Formatting requirements (strict):
 1) Use section headers on their own lines exactly as:
    Answer: <answer text>
    Evidence: <evidence text>
-   Caveats: <caveats text>
 2) Leave one blank line between sections.
 3) Do NOT put section headers inline with sentence content (forbidden: "... April 2023. Evidence:").
-4) In Answer section, include only answer text (no "Evidence" or "Caveats" words as section labels).
+4) In Answer section, include only answer text (no "Evidence" word as a section label).
 """.strip()
 
         # llm_response = self.llm_client.chat(
@@ -719,8 +714,7 @@ Output as a valid JSON object with exactly these keys:
   "policy_definition": "Policy definition with inline citations [doc_title:page - date]",
   "provider_manual_definition": "Provider manual definition with inline citations",
   "similarities": ["similarity point 1 with citation", "similarity point 2"],
-  "differences": ["difference point 1 with citation", "difference point 2"],
-  "caveats": "Any caveats, or null if none"
+  "differences": ["difference point 1 with citation", "difference point 2"]
 }}
 Do NOT wrap the JSON in markdown code fences. Return ONLY the JSON object.
 Each field must have inline citations like [doc_title or doc_title:page — Mon DD, YYYY].
@@ -797,7 +791,6 @@ Internal decision process:
                 "provider_manual_definition": "",
                 "similarities": [],
                 "differences": [],
-                "caveats": None,
                 "_parse_failed": True,
             }
         for key in ("similarities", "differences"):

@@ -341,13 +341,12 @@ def _build_recency_summary(retrieved_docs_grouped):
 
 
 def format_compare_tables(sections, retrieved_docs_grouped=None):
-    """Render compare definitions result as headline + 2 HTML tables + caveats."""
+    """Render compare definitions result as headline + 2 HTML tables."""
     headline = html.escape(sections.get("headline_summary", ""))
     policy_def = sections.get("policy_definition", "N/A")
     provider_def = sections.get("provider_manual_definition", "N/A")
     similarities = sections.get("similarities", [])
     differences = sections.get("differences", [])
-    caveats = sections.get("caveats")
     retrieved_docs_grouped = retrieved_docs_grouped or {}
 
     citation_to_num = {}
@@ -475,10 +474,6 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     </table>
     """
 
-    caveats_html = ""
-    if caveats:
-        caveats_html = f'<p style="color:#856404; background:#FFF3CD; padding:8px 12px; border-radius:4px; margin-top:0.5rem;"><b>Caveats:</b> {html.escape(str(caveats))}</p>'
-
     references_html = ""
     if citation_order:
         ref_items = []
@@ -514,7 +509,6 @@ def format_compare_tables(sections, retrieved_docs_grouped=None):
     <b>Comparison:</b>
     {table2}
     {references_html}
-    {caveats_html}
     """
 
 
