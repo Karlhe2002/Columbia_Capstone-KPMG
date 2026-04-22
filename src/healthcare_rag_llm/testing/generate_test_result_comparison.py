@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -10,6 +10,7 @@ from tqdm import tqdm
 from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
 from healthcare_rag_llm.llm.llm_client import LLMClient
 from healthcare_rag_llm.llm.response_generator import ResponseGenerator
+from healthcare_rag_llm.utils.api_config import APIConfigManager
 
 
 class RAGComparisonBatchTester:
@@ -63,15 +64,7 @@ class RAGComparisonBatchTester:
         self.rerank_top_k = int(rerank_top_k)
         self.use_reranker = use_reranker
 
-        self.llm_client = (
-            llm_client
-            if llm_client is not None
-            else LLMClient(
-                api_key="",
-                provider="ollama",
-                model="llama3.2:3b",
-            )
-        )
+        self.llm_client = llm_client if llm_client is not None else self._default_llm_from_config()
         
         self.filter_extractor = build_filter_extractor(llm_client=self.llm_client)
         self.response_generator = ResponseGenerator(
@@ -88,6 +81,17 @@ class RAGComparisonBatchTester:
 
         os.makedirs(self.output_dir, exist_ok=True)
         self.output_path = os.path.join(self.output_dir, f"{self.version_id}.json")
+
+    @staticmethod
+    def _default_llm_from_config() -> LLMClient:
+        mgr = APIConfigManager()
+        cfg = mgr.get_default_config()
+        return LLMClient(
+            api_key=cfg.api_key,
+            model=mgr.get_default_model_name(),
+            provider=cfg.provider,
+            base_url=cfg.base_url,
+        )
 
     def run(self) -> Dict[str, Any]:
         tests = self._read_json(self.testing_queries_path)

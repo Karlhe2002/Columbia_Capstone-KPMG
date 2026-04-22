@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 
+DEFAULT_PROVIDER = "openai_official"
+DEFAULT_MODEL = "gpt-5.4-mini-2026-03-17"
+
 @dataclass
 class APIConfig:
     """API configuration data class"""
@@ -52,8 +55,12 @@ class APIConfigManager:
     
     def get_default_config(self) -> APIConfig:
         """Get default configuration"""
-        default_provider = self._config.get("default_provider", "bltcy")
+        default_provider = self._config.get("default_provider", DEFAULT_PROVIDER)
         return self.get_provider_config(default_provider)
+
+    def get_default_model_name(self) -> str:
+        """Model id from `default_model` in the YAML, or project default."""
+        return self._config.get("default_model", DEFAULT_MODEL)
     
     def list_available_providers(self) -> list:
         """List all available providers"""
@@ -65,15 +72,15 @@ class APIConfigManager:
 
 
 def get_default_model_for_provider(provider: str) -> str:
-    """Map a provider type to a sensible default model."""
+    """Map a provider type to a sensible default model (fallbacks only)."""
     provider = (provider or "").lower()
     provider_to_model = {
-        "openai": "gpt-5",
-        "deepseek": "deepseek-chat",
+        "openai": DEFAULT_MODEL,
         "gemini": "gemini-2.5-flash",
         "ollama": "llama3.2:3b",
+        "anthropic": "claude-3",
     }
-    return provider_to_model.get(provider, "gpt-5")
+    return provider_to_model.get(provider, DEFAULT_MODEL)
 
 
 def load_api_config(config_path: str = "configs/api_config.yaml") -> Dict[str, Any]:

@@ -1,6 +1,13 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
 from healthcare_rag_llm.testing.generate_test_result import RAGBatchTester
 from healthcare_rag_llm.embedding.HealthcareEmbedding import HealthcareEmbedding
 from healthcare_rag_llm.llm.llm_client import LLMClient
+from healthcare_rag_llm.utils.api_config import APIConfigManager
+
 
 def main():
     # ==== Configuration Section ====
@@ -9,13 +16,15 @@ def main():
     output_dir = "data/test_results"
     version_id = "v1.0-demo"  # name of output JSON file (data/test_results/v1.0-demo.json)
 
-    # Embedding and LLM setup
+    # Embedding and LLM setup — use default_provider / default_model from configs/api_config.yaml
     embedding_method = HealthcareEmbedding
+    mgr = APIConfigManager()
+    cfg = mgr.get_default_config()
     llm_client = LLMClient(
-        api_key="",                # Add API key if needed
-        provider="openai",         # e.g., openai, anthropic, ollama,
-        base_url="https://api.bltcy.ai/v1",
-        model="gpt-5"        # model name used by your LLM provider
+        api_key=cfg.api_key,
+        provider=cfg.provider,
+        base_url=cfg.base_url,
+        model=mgr.get_default_model_name(),
     )
 
     # Retrieval and test parameters

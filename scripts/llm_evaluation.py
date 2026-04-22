@@ -75,8 +75,8 @@ Examples:
 
     parser.add_argument(
         "--model",
-        default="gpt-5",
-        help="Model to use for evaluation (default: gpt-5)"
+        default=None,
+        help="Model to use for evaluation (default: default_model from api_config.yaml)",
     )
 
     parser.add_argument(
@@ -117,8 +117,9 @@ Examples:
         print(f"Error loading API config: {e}")
         sys.exit(1)
 
-    # Determine provider
-    provider_name = args.provider or config.get("default_provider", "bltcy")
+    # Determine provider and model (match api_config defaults)
+    provider_name = args.provider or config.get("default_provider", "openai_official")
+    model = args.model or config.get("default_model", "gpt-5.4-mini-2026-03-17")
     if provider_name not in config["api_providers"]:
         print(f"Error: Provider '{provider_name}' not found in config")
         print(f"Available providers: {list(config['api_providers'].keys())}")
@@ -127,12 +128,12 @@ Examples:
     provider_config = config["api_providers"][provider_name]
 
     # Initialize LLM client
-    print(f"Initializing LLM client: model={args.model}, provider={provider_name}")
+    print(f"Initializing LLM client: model={model}, provider={provider_name}")
     try:
         llm_client = LLMClient(
             api_key=provider_config["api_key"],
             base_url=provider_config.get("base_url"),
-            model=args.model,
+            model=model,
             provider=provider_config.get("provider", "openai")
         )
     except Exception as e:
@@ -146,7 +147,7 @@ Examples:
     print(f"Test results: {args.test_results}")
     print(f"Output: {args.output}")
     print(f"Ground truth: {args.ground_truth or 'Not provided'}")
-    print(f"Evaluator model: {args.model}")
+    print(f"Evaluator model: {model}")
     print(f"Limit: {args.limit or 'All tests'}")
     print("="*60 + "\n")
 

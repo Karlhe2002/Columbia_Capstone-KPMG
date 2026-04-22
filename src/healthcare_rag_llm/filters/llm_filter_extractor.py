@@ -8,7 +8,7 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 
 from healthcare_rag_llm.llm.llm_client import LLMClient
-from healthcare_rag_llm.utils.api_config import APIConfigManager, get_default_model_for_provider
+from healthcare_rag_llm.utils.api_config import APIConfigManager
 
 MONTHS = {
     "jan": 1, "feb": 2, "mar": 3, "apr": 4,
@@ -187,9 +187,10 @@ class LLMFilterExtractor:
             try:
                 api_config_manager = APIConfigManager()
                 cfg = api_config_manager.get_default_config()
+                model = api_config_manager.get_default_model_name()
                 self.llm_client = LLMClient(
                     api_key=cfg.api_key,
-                    model=get_default_model_for_provider(cfg.provider),
+                    model=model,
                     provider=cfg.provider,
                     base_url=cfg.base_url,
                 )

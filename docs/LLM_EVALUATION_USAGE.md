@@ -36,16 +36,17 @@ Ensure `configs/api_config.yaml` is properly configured:
 
 ```yaml
 api_providers:
-  bltcy:
-    api_key: "your-api-key-here"
-    base_url: "https://api.bltcy.ai/v1"
+  openai_official:
+    api_key: "YOUR_OPENAI_API_KEY"
+    base_url: "https://api.openai.com/v1"
     provider: "openai"
 
-default_provider: "bltcy"
+default_provider: "openai_official"
+default_model: "gpt-5.4-mini-2026-03-17"
 
 models:
-  gpt-5:
-    provider: "bltcy"
+  gpt-5.4-mini-2026-03-17:
+    provider: "openai_official"
     max_tokens: 4000
 ```
 
@@ -73,7 +74,7 @@ STARTING LLM-BASED EVALUATION
 Test results: data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json
 Output: data/llm_eval_results/exp_001_eval.json
 Ground truth: Not provided
-Evaluator model: gpt-5
+Evaluator model: gpt-5.4-mini-2026-03-17
 Limit: All tests
 ============================================================
 
@@ -123,7 +124,7 @@ python scripts/llm_evaluation.py \
 ### Example 4: Use Specific Model
 
 ```bash
-# Use GPT-4 instead of default GPT-5
+# Use GPT-4 instead of the default model from api_config
 python scripts/llm_evaluation.py \
     -t data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
     -o data/llm_eval_results/exp_001_eval_gpt4.json \
@@ -151,7 +152,7 @@ The evaluation results JSON contains:
   "metadata": {
     "test_results_file": "data/test_results/exp_001.json",
     "ground_truth_file": null,
-    "evaluator_model": "gpt-5",
+    "evaluator_model": "gpt-5.4-mini-2026-03-17",
     "total_tests": 11
   },
   "results": {
@@ -307,14 +308,16 @@ from healthcare_rag_llm.utils.api_config import load_api_config
 
 # Load config
 config = load_api_config()
-provider_config = config["api_providers"]["bltcy"]
+default_provider = config.get("default_provider", "openai_official")
+provider_config = config["api_providers"][default_provider]
+default_model = config.get("default_model", "gpt-5.4-mini-2026-03-17")
 
 # Initialize LLM
 llm_client = LLMClient(
     api_key=provider_config["api_key"],
     base_url=provider_config["base_url"],
-    model="gpt-5",
-    provider="openai"
+    model=default_model,
+    provider=provider_config["provider"],
 )
 
 # Run evaluation

@@ -52,7 +52,7 @@ def build_llm_client() -> LLMClient:
     cfg = api_config_manager.get_default_config()
     return LLMClient(
         api_key=cfg.api_key,
-        model="gpt-5",
+        model=api_config_manager.get_default_model_name(),
         provider=cfg.provider,
         base_url=cfg.base_url,
     )

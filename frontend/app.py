@@ -89,14 +89,7 @@ def load_rag_pipeline():
     from healthcare_rag_llm.utils.api_config import APIConfigManager
     api_config_manager = APIConfigManager()
     api_config_default = api_config_manager.get_default_config()
-    provider = (api_config_default.provider or "").lower()
-    provider_to_model = {
-        "deepseek": "deepseek-chat",
-        "gemini": "gemini-2.5-flash",
-        # Use a widely available OpenAI-compatible fallback.
-        "openai": "gpt-4o-mini",
-    }
-    model = provider_to_model.get(provider, "deepseek-chat")
+    model = api_config_manager.get_default_model_name()
     llm_client = LLMClient(
         api_key=api_config_default.api_key,
         model=model,

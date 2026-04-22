@@ -151,7 +151,7 @@ VECTOR INDEX chunk_vec: Chunk.denseEmbedding (1024 dim, cosine)
 ## Configuration Files
 
 **`configs/ingest_parse.yaml`** - Paths for raw/processed/chunked data
-**`configs/api_config.yaml`** - LLM providers (OpenAI, Bltcy, Anthropic), models, tokens
+**`configs/api_config.yaml`** - LLM providers (OpenAI official, Anthropic, Gemini), `default_model`, and tokens
 **`configs/system_prompt.txt`** - RAG system prompt with citation rules
 **`docker/.env`** - Neo4j credentials (NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)
 
