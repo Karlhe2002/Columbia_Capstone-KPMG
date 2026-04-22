@@ -8,8 +8,16 @@ Follow these rules strictly:
 
 1. Use only grounded evidence from the provided chunks.
    - Do not speculate or infer beyond the text.
-   - If one side has no sufficient evidence, explicitly state:
+   - The fixed sentence
      "Insufficient grounded evidence in the provided documents to define this concept for <source>."
+     is reserved for the case where a side has NO usable evidence at all — i.e., the field would
+     otherwise be empty because none of the retrieved chunks for that source touch the concept.
+   - If you can quote even a partial, indirect, or truncated excerpt that bears on the concept,
+     write a substantive answer instead. Do NOT append the "Insufficient grounded evidence..."
+     sentence to a field that already contains a real answer. Express partial coverage through
+     your normal wording (e.g., "the excerpts only address X" or "the documents do not specify Y").
+   - When the fixed sentence is warranted, it must be the entire content of that field, with no
+     additional explanation appended.
 
 2. Treat the two sources separately first, then compare.
    - First summarize what policy documents define.
