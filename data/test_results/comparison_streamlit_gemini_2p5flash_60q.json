@@ -1,0 +1,962 @@
+{
+  "test_id_1": {
+    "query_id": "Test_query_compare_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_2": {
+    "query_id": "Test_query_compare_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_3": {
+    "query_id": "Test_query_compare_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_4": {
+    "query_id": "Test_query_compare_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_5": {
+    "query_id": "Test_query_compare_1",
+    "query_content": "Compare Medicaid versus provider manual guidance for dual eligible pharmacy claims.",
+    "concept": "dual eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_6": {
+    "query_id": "Test_query_compare_2",
+    "query_content": "How do Medicaid and provider manual guidance define primary payer responsibility for dual-eligible pharmacy claims?",
+    "concept": "primary payer responsibility for dual-eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_7": {
+    "query_id": "Test_query_compare_2",
+    "query_content": "How do Medicaid and provider manual guidance define primary payer responsibility for dual-eligible pharmacy claims?",
+    "concept": "primary payer responsibility for dual-eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_8": {
+    "query_id": "Test_query_compare_2",
+    "query_content": "How do Medicaid and provider manual guidance define primary payer responsibility for dual-eligible pharmacy claims?",
+    "concept": "primary payer responsibility for dual-eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_9": {
+    "query_id": "Test_query_compare_2",
+    "query_content": "How do Medicaid and provider manual guidance define primary payer responsibility for dual-eligible pharmacy claims?",
+    "concept": "primary payer responsibility for dual-eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_10": {
+    "query_id": "Test_query_compare_2",
+    "query_content": "How do Medicaid and provider manual guidance define primary payer responsibility for dual-eligible pharmacy claims?",
+    "concept": "primary payer responsibility for dual-eligible pharmacy claims",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_11": {
+    "query_id": "Test_query_compare_3",
+    "query_content": "What are the differences between Medicaid policy and provider manual guidance on co-payment responsibility for dual-eligible members?",
+    "concept": "co-payment responsibility for dual-eligible members",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_12": {
+    "query_id": "Test_query_compare_3",
+    "query_content": "What are the differences between Medicaid policy and provider manual guidance on co-payment responsibility for dual-eligible members?",
+    "concept": "co-payment responsibility for dual-eligible members",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_13": {
+    "query_id": "Test_query_compare_3",
+    "query_content": "What are the differences between Medicaid policy and provider manual guidance on co-payment responsibility for dual-eligible members?",
+    "concept": "co-payment responsibility for dual-eligible members",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_14": {
+    "query_id": "Test_query_compare_3",
+    "query_content": "What are the differences between Medicaid policy and provider manual guidance on co-payment responsibility for dual-eligible members?",
+    "concept": "co-payment responsibility for dual-eligible members",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_15": {
+    "query_id": "Test_query_compare_3",
+    "query_content": "What are the differences between Medicaid policy and provider manual guidance on co-payment responsibility for dual-eligible members?",
+    "concept": "co-payment responsibility for dual-eligible members",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_16": {
+    "query_id": "Test_query_compare_4",
+    "query_content": "How do Medicaid and provider manual guidance differ in handling Medicare Part D-excluded drugs?",
+    "concept": "handling Medicare Part D-excluded drugs",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_17": {
+    "query_id": "Test_query_compare_4",
+    "query_content": "How do Medicaid and provider manual guidance differ in handling Medicare Part D-excluded drugs?",
+    "concept": "handling Medicare Part D-excluded drugs",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_18": {
+    "query_id": "Test_query_compare_4",
+    "query_content": "How do Medicaid and provider manual guidance differ in handling Medicare Part D-excluded drugs?",
+    "concept": "handling Medicare Part D-excluded drugs",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_19": {
+    "query_id": "Test_query_compare_4",
+    "query_content": "How do Medicaid and provider manual guidance differ in handling Medicare Part D-excluded drugs?",
+    "concept": "handling Medicare Part D-excluded drugs",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_20": {
+    "query_id": "Test_query_compare_4",
+    "query_content": "How do Medicaid and provider manual guidance differ in handling Medicare Part D-excluded drugs?",
+    "concept": "handling Medicare Part D-excluded drugs",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_21": {
+    "query_id": "Test_query_compare_5",
+    "query_content": "Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.",
+    "concept": "when a pharmacy must bill Medicaid before billing Medicare",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_22": {
+    "query_id": "Test_query_compare_5",
+    "query_content": "Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.",
+    "concept": "when a pharmacy must bill Medicaid before billing Medicare",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_23": {
+    "query_id": "Test_query_compare_5",
+    "query_content": "Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.",
+    "concept": "when a pharmacy must bill Medicaid before billing Medicare",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_24": {
+    "query_id": "Test_query_compare_5",
+    "query_content": "Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.",
+    "concept": "when a pharmacy must bill Medicaid before billing Medicare",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_25": {
+    "query_id": "Test_query_compare_5",
+    "query_content": "Compare Medicaid versus provider manual rules for when a pharmacy must bill Medicaid before billing Medicare.",
+    "concept": "when a pharmacy must bill Medicaid before billing Medicare",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_26": {
+    "query_id": "Test_query_compare_6",
+    "query_content": "For crossover claims, what are the requirements for prior approval after Medicaid payment?",
+    "concept": "crossover claims prior approval after Medicaid payment",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_27": {
+    "query_id": "Test_query_compare_6",
+    "query_content": "For crossover claims, what are the requirements for prior approval after Medicaid payment?",
+    "concept": "crossover claims prior approval after Medicaid payment",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_28": {
+    "query_id": "Test_query_compare_6",
+    "query_content": "For crossover claims, what are the requirements for prior approval after Medicaid payment?",
+    "concept": "crossover claims prior approval after Medicaid payment",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_29": {
+    "query_id": "Test_query_compare_6",
+    "query_content": "For crossover claims, what are the requirements for prior approval after Medicaid payment?",
+    "concept": "crossover claims prior approval after Medicaid payment",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_30": {
+    "query_id": "Test_query_compare_6",
+    "query_content": "For crossover claims, what are the requirements for prior approval after Medicaid payment?",
+    "concept": "crossover claims prior approval after Medicaid payment",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_31": {
+    "query_id": "Test_query_compare_7",
+    "query_content": "What are the requirements for Coordination of Benefits (COB)?",
+    "concept": "coordination of benefits requirements",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_32": {
+    "query_id": "Test_query_compare_7",
+    "query_content": "What are the requirements for Coordination of Benefits (COB)?",
+    "concept": "coordination of benefits requirements",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_33": {
+    "query_id": "Test_query_compare_7",
+    "query_content": "What are the requirements for Coordination of Benefits (COB)?",
+    "concept": "coordination of benefits requirements",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_34": {
+    "query_id": "Test_query_compare_7",
+    "query_content": "What are the requirements for Coordination of Benefits (COB)?",
+    "concept": "coordination of benefits requirements",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_35": {
+    "query_id": "Test_query_compare_7",
+    "query_content": "What are the requirements for Coordination of Benefits (COB)?",
+    "concept": "coordination of benefits requirements",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_36": {
+    "query_id": "Test_query_compare_8",
+    "query_content": "What responsibilities do pharmacists have when required patient or prescriber information is missing?",
+    "concept": "pharmacist responsibilities when required patient or prescriber information is missing",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_37": {
+    "query_id": "Test_query_compare_8",
+    "query_content": "What responsibilities do pharmacists have when required patient or prescriber information is missing?",
+    "concept": "pharmacist responsibilities when required patient or prescriber information is missing",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_38": {
+    "query_id": "Test_query_compare_8",
+    "query_content": "What responsibilities do pharmacists have when required patient or prescriber information is missing?",
+    "concept": "pharmacist responsibilities when required patient or prescriber information is missing",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_39": {
+    "query_id": "Test_query_compare_8",
+    "query_content": "What responsibilities do pharmacists have when required patient or prescriber information is missing?",
+    "concept": "pharmacist responsibilities when required patient or prescriber information is missing",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_40": {
+    "query_id": "Test_query_compare_8",
+    "query_content": "What responsibilities do pharmacists have when required patient or prescriber information is missing?",
+    "concept": "pharmacist responsibilities when required patient or prescriber information is missing",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_41": {
+    "query_id": "Test_query_compare_9",
+    "query_content": "Are weight loss drugs an excluded benefit?",
+    "concept": "weight loss drugs excluded benefit status",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_42": {
+    "query_id": "Test_query_compare_9",
+    "query_content": "Are weight loss drugs an excluded benefit?",
+    "concept": "weight loss drugs excluded benefit status",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_43": {
+    "query_id": "Test_query_compare_9",
+    "query_content": "Are weight loss drugs an excluded benefit?",
+    "concept": "weight loss drugs excluded benefit status",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_44": {
+    "query_id": "Test_query_compare_9",
+    "query_content": "Are weight loss drugs an excluded benefit?",
+    "concept": "weight loss drugs excluded benefit status",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_45": {
+    "query_id": "Test_query_compare_9",
+    "query_content": "Are weight loss drugs an excluded benefit?",
+    "concept": "weight loss drugs excluded benefit status",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_46": {
+    "query_id": "Test_query_compare_10",
+    "query_content": "How are the 340B drugs reimbursed?",
+    "concept": "340B drugs reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_47": {
+    "query_id": "Test_query_compare_10",
+    "query_content": "How are the 340B drugs reimbursed?",
+    "concept": "340B drugs reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_48": {
+    "query_id": "Test_query_compare_10",
+    "query_content": "How are the 340B drugs reimbursed?",
+    "concept": "340B drugs reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_49": {
+    "query_id": "Test_query_compare_10",
+    "query_content": "How are the 340B drugs reimbursed?",
+    "concept": "340B drugs reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_50": {
+    "query_id": "Test_query_compare_10",
+    "query_content": "How are the 340B drugs reimbursed?",
+    "concept": "340B drugs reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_51": {
+    "query_id": "Test_query_compare_11",
+    "query_content": "How are home infusion drugs covered, and who is responsible for billing",
+    "concept": "home infusion drugs coverage and billing responsibilities",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_52": {
+    "query_id": "Test_query_compare_11",
+    "query_content": "How are home infusion drugs covered, and who is responsible for billing",
+    "concept": "home infusion drugs coverage and billing responsibilities",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_53": {
+    "query_id": "Test_query_compare_11",
+    "query_content": "How are home infusion drugs covered, and who is responsible for billing",
+    "concept": "home infusion drugs coverage and billing responsibilities",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_54": {
+    "query_id": "Test_query_compare_11",
+    "query_content": "How are home infusion drugs covered, and who is responsible for billing",
+    "concept": "home infusion drugs coverage and billing responsibilities",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_55": {
+    "query_id": "Test_query_compare_11",
+    "query_content": "How are home infusion drugs covered, and who is responsible for billing",
+    "concept": "home infusion drugs coverage and billing responsibilities",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_56": {
+    "query_id": "Test_query_compare_12",
+    "query_content": "How is naloxone reimbursed?",
+    "concept": "naloxone reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_57": {
+    "query_id": "Test_query_compare_12",
+    "query_content": "How is naloxone reimbursed?",
+    "concept": "naloxone reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_58": {
+    "query_id": "Test_query_compare_12",
+    "query_content": "How is naloxone reimbursed?",
+    "concept": "naloxone reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_59": {
+    "query_id": "Test_query_compare_12",
+    "query_content": "How is naloxone reimbursed?",
+    "concept": "naloxone reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  },
+  "test_id_60": {
+    "query_id": "Test_query_compare_12",
+    "query_content": "How is naloxone reimbursed?",
+    "concept": "naloxone reimbursement",
+    "task_type": "compare_definition",
+    "long_version_id": "RAGComparisonStreamlitBatchTester-LLMClient-openai-gpt-5.4-mini-2026-03-17-r5",
+    "short_version_id": "comparison_streamlit_gemini_2p5flash_60q",
+    "retrieved_docs": {
+      "policy": [],
+      "provider_manual": []
+    },
+    "answers": {
+      "_parse_failed": true,
+      "error": "AuthenticationError: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-api-key. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}"
+    }
+  }
+}
