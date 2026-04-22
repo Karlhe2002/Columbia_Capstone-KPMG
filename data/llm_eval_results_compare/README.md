@@ -7,14 +7,16 @@
 - All input files should be renamed to `branch_name_model.json` (for example `dense_sparse_gemini.json`)
 
 ## 2) One-shot pipeline
-- If you want to run all files in `data/llm_eval_results_compare/comparison_raw` in one command, use the wrapper:
+- If you want to run all files in `data/llm_eval_results_compare/comparison_raw` in one command, pass the directory to the wrapper:
 
 ```bash
 .venv/bin/python scripts/compare_eval_pipeline.py \
-    -i data/llm_eval_results_compare/comparison_raw/comparison_version_update.json \
+    -i data/llm_eval_results_compare/comparison_raw \
     --provider openai_official \
     --model gpt-4o-mini
 ```
+
+- This runs every JSON file in `data/llm_eval_results_compare/comparison_raw`, then writes the processed and LLM eval outputs under the matching `comparison_processed/` and `comparison_llm_eval_results/` folders.
 
 - You can run only selected files (not all) by passing multiple `-i` values:
 
