@@ -11,7 +11,7 @@ Convert compare test-results JSON to compare-evaluation JSON.
 
 Mapping:
 - query_content -> question (Q)
-- answers -> answer (A)
+- answers -> answers (structured A)
 
 Input example item:
 {
@@ -20,7 +20,7 @@ Input example item:
     "query_content": "...",
     "concept": "...",
     "retrieved_docs": {"policy": [...], "provider_manual": [...]},
-    "answers": "**Headline Summary ..."
+    "answers": "..."
   }
 }
 
@@ -30,14 +30,14 @@ Output example item:
     "query_id": "Test_query_compare_1",
     "question": "...",
     "concept": "...",
-    "compare_sections": {
-      "headline_summary": "...",
-      "policy_definition": "...",
-      "provider_manual_definition": "...",
-      "comparison": ["..."],
-      "evidence_quoted": ["..."],
-      "caveats": "..."
-    },
+        "answers": {
+            "headline_summary": "...",
+            "policy_definition": "...",
+            "provider_manual_definition": "...",
+            "similarities": ["..."],
+            "differences": ["..."],
+            "caveats": "..."
+        },
     "retrieved_docs": {"policy": [...], "provider_manual": [...]},
     "answer": "...",
     "ground_truth": "..."
@@ -276,7 +276,7 @@ def _load_ground_truth_rows(csv_path: Optional[Path]) -> List[Tuple[str, Dict[st
     return rows
 
 
-def _parse_compare_sections(answer: Any) -> Dict[str, Any]:
+def _normalize_answers_payload(answer: Any) -> Dict[str, Any]:
     payload = _parse_answer_payload(answer)
 
     if payload:
@@ -318,55 +318,7 @@ def _parse_compare_sections(answer: Any) -> Dict[str, Any]:
         }
         return sections
 
-    answer = _normalize_answer(str(answer))
-
-    headline_block = _section(
-        answer,
-        ["**Headline Summary of the 2 sources**"],
-        ["**Policy Definition**"],
-    )
-    policy_block = _section(
-        answer,
-        ["**Policy Definition**"],
-        ["**Provider Manual Definition**"],
-    )
-    provider_block = _section(
-        answer,
-        ["**Provider Manual Definition**"],
-        ["**Comparison (similarities and differences)**"],
-    )
-    comparison_block = _section(
-        answer,
-        ["**Comparison (similarities and differences)**"],
-        [
-            "**Evidence (quoted)**",
-            "**Caveats (if any)**",
-            "📚 Retrieved Sources",
-            "Retrieved Sources",
-        ],
-    )
-    evidence_block = _section(
-        answer,
-        ["**Evidence (quoted)**"],
-        ["**Caveats (if any)**", "📚 Retrieved Sources", "Retrieved Sources"],
-    )
-    caveats = _section(
-        answer,
-        ["**Caveats (if any)**"],
-        ["📚 Retrieved Sources", "Retrieved Sources"],
-    ) or None
-
-    sections = {
-        "headline_summary": _flatten_block(headline_block),
-        "policy_definition": _flatten_block(policy_block),
-        "provider_manual_definition": _flatten_block(provider_block),
-        "similarities": [],
-        "differences": [],
-        "comparison": _extract_comparison_items(comparison_block),
-        "evidence_quoted": _extract_evidence(evidence_block),
-        "caveats": caveats,
-    }
-    return sections
+    return {}
 
 
 def convert_json_to_json(
@@ -411,9 +363,9 @@ def convert_json_to_json(
             "query_id": query_id,
             "question": question,
             "concept": item.get("concept", ""),
-            "compare_sections": _parse_compare_sections(str(answer_text)),
+            "answers": _normalize_answers_payload(answer_text),
             "retrieved_docs": retrieved_docs,
-            "answer": str(answer_text),
+            "answer": json.dumps(answer_text, ensure_ascii=False) if isinstance(answer_text, dict) else str(answer_text),
         }
 
         ground_truth_fields = ground_truth_map.get(normalized_question)

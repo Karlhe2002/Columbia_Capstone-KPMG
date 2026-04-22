@@ -449,34 +449,17 @@ Respond in JSON format:
 
 def _extract_compare_parts(test_entry: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Extract policy_definition, provider_manual_definition, policy_chunks, provider_chunks
-    from compare_definitions output. Falls back to parsing raw answer if compare_sections
-    not present.
+    Extract policy_definition, provider_manual_definition, similarities, differences,
+    policy_chunks, and provider_chunks from the current compare output shape.
     """
-    compare_sections = test_entry.get("compare_sections")
-    if not compare_sections:
-        raw = test_entry.get("answer") or test_entry.get("answers", "")
-        if isinstance(raw, str):
-            try:
-                compare_sections = json.loads(raw)
-            except (json.JSONDecodeError, TypeError):
-                pass
-        if not compare_sections or not isinstance(compare_sections, dict):
-            return None
-    policy_def = compare_sections.get("policy_definition", "")
-    provider_def = compare_sections.get("provider_manual_definition", "")
-    sim = _to_string_list(compare_sections.get("similarities", []))
-    diff = _to_string_list(compare_sections.get("differences", []))
-    comparison = _to_string_list(compare_sections.get("comparison", []))
-    # Current format: comparison[0] is similarity, comparison[1] is difference.
-    # Keep backward compatibility when explicit similarities/differences are absent.
-    if not sim and not diff and comparison:
-        if len(comparison) >= 1:
-            sim = [comparison[0]]
-        if len(comparison) >= 2:
-            diff = [comparison[1]]
-        if len(comparison) > 2:
-            diff.extend(comparison[2:])
+    answers = test_entry.get("answers")
+    if not isinstance(answers, dict):
+        return None
+
+    policy_def = answers.get("policy_definition", "")
+    provider_def = answers.get("provider_manual_definition", "")
+    sim = _to_string_list(answers.get("similarities", []))
+    diff = _to_string_list(answers.get("differences", []))
     retrieved = test_entry.get("retrieved_docs", {})
     policy_chunks = _normalize_retrieved_chunks(retrieved.get("policy", []))
     provider_chunks = _normalize_retrieved_chunks(retrieved.get("provider_manual", []))
@@ -485,7 +468,6 @@ def _extract_compare_parts(test_entry: Dict[str, Any]) -> Optional[Dict[str, Any
         "provider_manual_definition": str(provider_def) if provider_def else "",
         "similarities": list(sim),
         "differences": list(diff),
-        "comparison": list(comparison),
         "policy_chunks": list(policy_chunks),
         "provider_chunks": list(provider_chunks),
     }

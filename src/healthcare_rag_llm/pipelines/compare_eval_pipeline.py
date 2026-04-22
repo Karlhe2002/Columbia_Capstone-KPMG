@@ -38,12 +38,18 @@ def main() -> int:
         "-i",
         "--input_raw",
         nargs="+",
-        help="One or more raw compare JSON paths (typically under data/llm_eval_results_compare/comparison_raw)",
+        help="One or more raw compare JSON paths or directories (typically under data/llm_eval_results_compare/comparison_raw)",
     )
     input_group.add_argument(
         "--suffix",
         default=None,
         help="Run all raw JSON files in comparison_raw ending with this suffix, for example: _llama.json",
+    )
+    parser.add_argument(
+        "--exclude-suffix",
+        nargs="*",
+        default=[],
+        help="Optional filename suffixes to skip, for example: _gpt.json",
     )
     parser.add_argument(
         "-n",
@@ -82,6 +88,8 @@ def main() -> int:
 
     repo_root = _repo_root()
     input_raw_files: list[Path] = []
+    exclude_suffixes = [suffix for suffix in args.exclude_suffix if suffix]
+
     if args.input_raw:
         for raw_item in args.input_raw:
             input_raw_path = Path(raw_item).expanduser()
@@ -92,7 +100,16 @@ def main() -> int:
             if not input_raw_path.exists():
                 print(f"Error: raw input file not found: {input_raw_path}")
                 return 1
-            input_raw_files.append(input_raw_path)
+            if input_raw_path.is_dir():
+                directory_files = sorted(
+                    [p.resolve() for p in input_raw_path.iterdir() if p.is_file() and p.suffix.lower() == ".json"]
+                )
+                if not directory_files:
+                    print(f"Error: no JSON files found in directory: {input_raw_path}")
+                    return 1
+                input_raw_files.extend(directory_files)
+            else:
+                input_raw_files.append(input_raw_path)
     else:
         raw_dir = repo_root / "data" / "llm_eval_results_compare" / "comparison_raw"
         if not raw_dir.exists():
@@ -108,6 +125,16 @@ def main() -> int:
             return 1
 
         input_raw_files.extend(matched_files)
+
+    if exclude_suffixes:
+        input_raw_files = [p for p in input_raw_files if not any(p.name.endswith(suffix) for suffix in exclude_suffixes)]
+
+    if not input_raw_files:
+        print("Error: no raw files left after applying exclusions")
+        return 1
+
+    # Keep the input order stable while removing duplicates from mixed file/directory input.
+    input_raw_files = list(dict.fromkeys(input_raw_files))
 
     if len(input_raw_files) > 1 and args.name:
         print("Error: --name only supports single-file mode. Remove --name when passing multiple --input_raw files.")
