@@ -1,11 +1,15 @@
 from healthcare_rag_llm.llm.llm_client import LLMClient
 from healthcare_rag_llm.llm.response_generator import ResponseGenerator
 from healthcare_rag_llm.filters.load_metadata import build_filter_extractor
+from healthcare_rag_llm.utils.api_config import APIConfigManager
 
-llm_client = LLMClient(api_key="", 
-                        model="gpt-5", 
-                        provider="openai",
-                        base_url = "https://api.bltcy.ai/v1")
+api_cfg = APIConfigManager().get_default_config()
+llm_client = LLMClient(
+    api_key=api_cfg.api_key,
+    model="gpt-5.4-mini-2026-03-17",
+    provider=api_cfg.provider,
+    base_url=api_cfg.base_url,
+)
 
 filter_extractor = build_filter_extractor()
 

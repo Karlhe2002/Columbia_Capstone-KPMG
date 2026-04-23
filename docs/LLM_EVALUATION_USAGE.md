@@ -36,16 +36,17 @@ Ensure `configs/api_config.yaml` is properly configured:
 
 ```yaml
 api_providers:
-  bltcy:
-    api_key: "your-api-key-here"
-    base_url: "https://api.bltcy.ai/v1"
+  openai_official:
+    api_key: "your-openai-api-key"
+    base_url: "https://api.openai.com/v1"
     provider: "openai"
 
-default_provider: "bltcy"
+default_provider: "openai_official"
+default_model: "gpt-5.4-mini-2026-03-17"
 
 models:
-  gpt-5:
-    provider: "bltcy"
+  gpt-5.4-mini-2026-03-17:
+    provider: "openai_official"
     max_tokens: 4000
 ```
 
@@ -56,12 +57,12 @@ models:
 ```bash
 # Evaluate all test results
 python scripts/llm_evaluation.py \
-    --test_results data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    --test_results data/test_results/exp_001_semantic_k5_noRerank.json \
     --output data/llm_eval_results/exp_001_eval.json
 
 # Or with short flags
 python scripts/llm_evaluation.py \
-    -t data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    -t data/test_results/exp_001_semantic_k5_noRerank.json \
     -o data/llm_eval_results/exp_001_eval.json
 ```
 
@@ -70,14 +71,14 @@ python scripts/llm_evaluation.py \
 ============================================================
 STARTING LLM-BASED EVALUATION
 ============================================================
-Test results: data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json
+Test results: data/test_results/exp_001_semantic_k5_noRerank.json
 Output: data/llm_eval_results/exp_001_eval.json
 Ground truth: Not provided
-Evaluator model: gpt-5
+Evaluator model: gpt-5.4-mini-2026-03-17
 Limit: All tests
 ============================================================
 
-Loading test results from: data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json
+Loading test results from: data/test_results/exp_001_semantic_k5_noRerank.json
 
 [1/11] Evaluating test_id_1 (query: Test_query_1)
   Evaluating faithfulness...
@@ -103,7 +104,7 @@ overall             : mean=0.837, min=0.724, max=0.932
 
 ```bash
 python scripts/llm_evaluation.py \
-    -t data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    -t data/test_results/exp_001_semantic_k5_noRerank.json \
     -o data/llm_eval_results/exp_001_eval_with_gt.json \
     -g data/ground_truth/ground_truth.json
 ```
@@ -115,7 +116,7 @@ This adds **Correctness** evaluation by comparing to ground truth answers.
 ```bash
 # Test on first 3 queries only
 python scripts/llm_evaluation.py \
-    -t data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    -t data/test_results/exp_001_semantic_k5_noRerank.json \
     -o data/llm_eval_results/exp_001_sample.json \
     --limit 3
 ```
@@ -123,11 +124,11 @@ python scripts/llm_evaluation.py \
 ### Example 4: Use Specific Model
 
 ```bash
-# Use GPT-4 instead of default GPT-5
+# Override the default evaluator model
 python scripts/llm_evaluation.py \
-    -t data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
-    -o data/llm_eval_results/exp_001_eval_gpt4.json \
-    --model gpt-4
+    -t data/test_results/exp_001_semantic_k5_noRerank.json \
+    -o data/llm_eval_results/exp_001_eval_alt.json \
+    --model gpt-5.4-mini-2026-03-17
 ```
 
 ### Example 5: Batch Evaluate Multiple Experiments
@@ -137,7 +138,7 @@ python scripts/llm_evaluation.py \
 for exp in exp_001 exp_002 exp_003; do
     echo "Evaluating $exp..."
     python scripts/llm_evaluation.py \
-        -t "data/test_results/${exp}_semantic_k5_noRerank_gpt-5.json" \
+        -t "data/test_results/${exp}_semantic_k5_noRerank.json" \
         -o "data/llm_eval_results/${exp}_eval.json"
 done
 ```
@@ -151,7 +152,7 @@ The evaluation results JSON contains:
   "metadata": {
     "test_results_file": "data/test_results/exp_001.json",
     "ground_truth_file": null,
-    "evaluator_model": "gpt-5",
+    "evaluator_model": "gpt-5.4-mini-2026-03-17",
     "total_tests": 11
   },
   "results": {
@@ -286,12 +287,12 @@ python scripts/testing/generate_test_result.py \
 
 # 2. Evaluate with LLM judge
 python scripts/llm_evaluation.py \
-    -t data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    -t data/test_results/exp_001_semantic_k5_noRerank.json \
     -o data/llm_eval_results/exp_001_llm_eval.json
 
 # 3. Also run traditional evaluation (document/page accuracy)
 python scripts/evaluate.py \
-    --tested_result data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    --tested_result data/test_results/exp_001_semantic_k5_noRerank.json \
     --ground_truth data/ground_truth.json \
     --output data/evaluation_results/exp_001_eval.json
 
@@ -307,14 +308,14 @@ from healthcare_rag_llm.utils.api_config import load_api_config
 
 # Load config
 config = load_api_config()
-provider_config = config["api_providers"]["bltcy"]
+provider_config = config["api_providers"][config["default_provider"]]
 
 # Initialize LLM
 llm_client = LLMClient(
     api_key=provider_config["api_key"],
     base_url=provider_config["base_url"],
-    model="gpt-5",
-    provider="openai"
+    model=config.get("default_model", "gpt-5.4-mini-2026-03-17"),
+    provider=provider_config["provider"]
 )
 
 # Run evaluation

@@ -34,7 +34,7 @@ results_df = pipeline.run_batch_experiments(experiments)
 ```python
 pipeline = EvaluatePipeline(
     enable_llm_eval=True,
-    llm_eval_model="gpt-5"
+    llm_eval_model="gpt-5.4-mini-2026-03-17"
 )
 results_df = pipeline.run_batch_experiments(experiments)
 
@@ -56,7 +56,7 @@ results_df = pipeline.run_batch_experiments(experiments)
 ```python
 pipeline = EvaluatePipeline(
     enable_llm_eval=True,
-    llm_eval_model="gpt-5",
+    llm_eval_model="gpt-5.4-mini-2026-03-17",
     llm_eval_limit=3  # Only evaluate first 3 queries per experiment
 )
 results_df = pipeline.run_batch_experiments(experiments)
@@ -77,7 +77,7 @@ results_df = pipeline.run_batch_experiments(experiments)
 ```python
 pipeline = EvaluatePipeline(
     enable_llm_eval=True,
-    llm_eval_model="gpt-4",
+    llm_eval_model="gpt-5.4-mini-2026-03-17",
     llm_eval_provider="openai_official"  # Use official OpenAI API
 )
 results_df = pipeline.run_batch_experiments(experiments)
@@ -94,7 +94,7 @@ results_df = pipeline.run_batch_experiments(experiments)
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `enable_llm_eval` | bool | `False` | Enable LLM-based evaluation |
-| `llm_eval_model` | str | `"gpt-5"` | Model to use for evaluation |
+| `llm_eval_model` | str | `"gpt-5.4-mini-2026-03-17"` | Model to use for evaluation |
 | `llm_eval_provider` | str | `None` | API provider (None = use default from config) |
 | `llm_eval_limit` | int\|None | `None` | Limit tests to evaluate (None = all) |
 | `llm_eval_timeout` | int | `3600` | Timeout for LLM eval in seconds |
@@ -108,12 +108,12 @@ results_df = pipeline.run_batch_experiments(experiments)
 ```
 data/
 ├── test_results/
-│   └── exp_001_semantic_k5_noRerank_gpt-5.json    # Test results
+│   └── exp_001_semantic_k5_noRerank.json    # Test results
 ├── evaluation_results/
-│   ├── exp_001_semantic_k5_noRerank_gpt-5_evaluation.json  # Traditional eval
-│   └── batch_evaluation_results.csv                        # All experiments summary
+│   ├── exp_001_semantic_k5_noRerank_evaluation.json  # Traditional eval
+│   └── batch_evaluation_results.csv                   # All experiments summary
 └── llm_eval_results/
-    └── exp_001_semantic_k5_noRerank_gpt-5_llm_evaluation.json  # LLM eval (detailed)
+    └── exp_001_semantic_k5_noRerank_llm_evaluation.json  # LLM eval (detailed)
 ```
 
 ### CSV Output Columns
@@ -166,19 +166,19 @@ Score Range    Interpretation
 ============================================================
 Best Results:
 ============================================================
-Best document accuracy: exp_002_fix_size_k5_rerank_a0.5_gpt-5
+Best document accuracy: exp_002_fix_size_k5_rerank_a0.5
   - Doc Accuracy: 0.818
   - Page Accuracy: 0.636
   - Chunking: fix_size
   - Top-K: 5
-  - Model: gpt-5
+  - Model: gpt-5.4-mini-2026-03-17
 
-Best page accuracy: exp_002_fix_size_k5_rerank_a0.5_gpt-5
+Best page accuracy: exp_002_fix_size_k5_rerank_a0.5
   - Page Accuracy: 0.636
   - Doc Accuracy: 0.818
   - Chunking: fix_size
   - Top-K: 5
-  - Model: gpt-5
+  - Model: gpt-5.4-mini-2026-03-17
 ============================================================
 ```
 
@@ -188,21 +188,21 @@ Best page accuracy: exp_002_fix_size_k5_rerank_a0.5_gpt-5
 ============================================================
 Best Results:
 ============================================================
-Best document accuracy: exp_002_fix_size_k5_rerank_a0.5_gpt-5
+Best document accuracy: exp_002_fix_size_k5_rerank_a0.5
   - Doc Accuracy: 0.818
   - Page Accuracy: 0.636
   - Chunking: fix_size
   - Top-K: 5
-  - Model: gpt-5
+  - Model: gpt-5.4-mini-2026-03-17
 
-Best page accuracy: exp_002_fix_size_k5_rerank_a0.5_gpt-5
+Best page accuracy: exp_002_fix_size_k5_rerank_a0.5
   - Page Accuracy: 0.636
   - Doc Accuracy: 0.818
   - Chunking: fix_size
   - Top-K: 5
-  - Model: gpt-5
+  - Model: gpt-5.4-mini-2026-03-17
 
-Best LLM overall score: exp_001_semantic_k5_noRerank_gpt-5
+Best LLM overall score: exp_001_semantic_k5_noRerank
   - LLM Overall: 0.892
   - Faithfulness: 0.923
   - Answer Relevance: 0.912
@@ -227,7 +227,7 @@ Best LLM overall score: exp_001_semantic_k5_noRerank_gpt-5
 
 ### Cost Impact (Approximate)
 
-Assuming gpt-5 at ~$0.002 per query:
+Assuming gpt-5.4-mini-2026-03-17 at ~$0.002 per query:
 - Traditional only: ~$0.02 per experiment
 - + LLM eval (all): ~$0.13 per experiment (+$0.11)
 - + LLM eval (limit=3): ~$0.05 per experiment (+$0.03)
@@ -361,7 +361,7 @@ def main():
     # To:
     pipeline = EvaluatePipeline(
         enable_llm_eval=True,
-        llm_eval_model="gpt-5",
+        llm_eval_model="gpt-5.4-mini-2026-03-17",
         llm_eval_limit=3  # or None for all
     )
 

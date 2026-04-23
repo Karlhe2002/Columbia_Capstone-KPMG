@@ -1373,8 +1373,6 @@ Formatting requirements (strict):
         except json.JSONDecodeError:
             return {
                 "headline_summary": llm_response,
-                "policy_definition": "",
-                "provider_manual_definition": "",
                 "aligned_pairs": [],
                 "similarities": [],
                 "differences": [],
@@ -1427,4 +1425,7 @@ Formatting requirements (strict):
                 }
                 for i in range(max_len)
             ]
+        for key in ("policy_definition", "provider_manual_definition"):
+            if not parsed.get(key):
+                parsed.pop(key, None)
         return parsed

@@ -1,27 +1,23 @@
 # configs/api_config.yaml
 api_providers:
   openai_official:
-    api_key: "your-openai-api-key"
+    api_key: "YOUR_OPENAI_API_KEY"
     base_url: "https://api.openai.com/v1"
     provider: "openai"
-    
-  bltcy:
-    api_key: "sk-uGxA1B2QS7davJiwh3MTDeNEFFSIPSZRRHi21k5GUUMA1Jnr" 
-    base_url: "https://api.bltcy.ai/v1"
-    provider: "openai"
-    
+
   anthropic:
     api_key: "your-anthropic-api-key"
     base_url: "https://api.anthropic.com"
     provider: "anthropic"
-  
+
   gemini:
-    api_key: "AIzaSyB2BfV-FpZchZ2Da8Wb0o-HFJZU81FWVoQ"
+    api_key: "YOUR_GEMINI_API_KEY"
     base_url: "https://generativelanguage.googleapis.com"
     provider: "gemini"
 
 # Default API configuration
 default_provider: "gemini"
+default_model: "gemini-2.5-flash"
 
 # Model configuration
 models:
@@ -29,14 +25,10 @@ models:
     provider: "gemini"
     max_tokens: 4000
 
-  gpt-5:
-    provider: "bltcy"
+  gpt-5.4-mini-2026-03-17:
+    provider: "openai_official"
     max_tokens: 4000
-    
-  gpt-4:
-    provider: "openai_official" 
-    max_tokens: 4000
-    
+
   claude-3:
     provider: "anthropic"
     max_tokens: 4000

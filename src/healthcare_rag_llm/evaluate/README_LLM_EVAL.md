@@ -21,26 +21,26 @@ Each dimension is scored 0.0-1.0, and an overall weighted score is calculated.
 ```bash
 # Basic evaluation
 python scripts/llm_evaluation.py \
-    --test_results data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    --test_results data/test_results/exp_001_semantic_k5_noRerank.json \
     --output data/llm_eval_results/exp_001_llm_eval.json
 
 # With ground truth for correctness evaluation
 python scripts/llm_evaluation.py \
-    --test_results data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    --test_results data/test_results/exp_001_semantic_k5_noRerank.json \
     --output data/llm_eval_results/exp_001_llm_eval.json \
     --ground_truth data/ground_truth.json
 
 # Test on first 3 items only (for testing)
 python scripts/llm_evaluation.py \
-    --test_results data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    --test_results data/test_results/exp_001_semantic_k5_noRerank.json \
     --output data/llm_eval_results/exp_001_llm_eval.json \
     --limit 3
 
 # Use specific model
 python scripts/llm_evaluation.py \
-    --test_results data/test_results/exp_001_semantic_k5_noRerank_gpt-5.json \
+    --test_results data/test_results/exp_001_semantic_k5_noRerank.json \
     --output data/llm_eval_results/exp_001_llm_eval.json \
-    --model gpt-4
+    --model gpt-5.4-mini-2026-03-17
 ```
 
 ### Programmatic Usage
@@ -51,9 +51,9 @@ from healthcare_rag_llm.llm.llm_client import LLMClient
 
 # Initialize LLM client
 llm_client = LLMClient(
-    api_key="your-api-key",
-    base_url="https://api.bltcy.ai/v1",
-    model="gpt-5",
+    api_key="your-openai-api-key",
+    base_url="https://api.openai.com/v1",
+    model="gpt-5.4-mini-2026-03-17",
     provider="openai"
 )
 
@@ -132,7 +132,7 @@ The evaluation results JSON contains:
 {
   "metadata": {
     "test_results_file": "...",
-    "evaluator_model": "gpt-5",
+    "evaluator_model": "gpt-5.4-mini-2026-03-17",
     "total_tests": 11
   },
   "results": {
@@ -242,16 +242,17 @@ Edit `configs/api_config.yaml`:
 
 ```yaml
 api_providers:
-  bltcy:
-    api_key: "your-api-key"
-    base_url: "https://api.bltcy.ai/v1"
+  openai_official:
+    api_key: "your-openai-api-key"
+    base_url: "https://api.openai.com/v1"
     provider: "openai"
 
-default_provider: "bltcy"
+default_provider: "openai_official"
+default_model: "gpt-5.4-mini-2026-03-17"
 
 models:
-  gpt-5:
-    provider: "bltcy"
+  gpt-5.4-mini-2026-03-17:
+    provider: "openai_official"
     max_tokens: 4000
 ```
 
