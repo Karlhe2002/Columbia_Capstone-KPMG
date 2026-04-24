@@ -298,14 +298,40 @@ def _normalize_answers_payload(answer: Any) -> Dict[str, Any]:
         policy_def = _get_with_alias(payload, "policy_definition", ["policy_update"])
         provider_manual_def = _get_with_alias(payload, "provider_manual_definition", ["provider_manual"])
         
-        # If not found at top level, try to extract from aligned_pairs
-        if not policy_def and not provider_manual_def:
+        # If policy_definition and provider_manual_definition are empty, extract from aligned_pairs
+        policy_def_list = payload.get("policy_definition", [])
+        provider_manual_def_list = payload.get("provider_manual_definition", [])
+        
+        # Check if they are empty arrays or empty strings
+        is_policy_def_empty = (
+            not policy_def_list if isinstance(policy_def_list, list)
+            else not policy_def
+        )
+        is_provider_manual_def_empty = (
+            not provider_manual_def_list if isinstance(provider_manual_def_list, list)
+            else not provider_manual_def
+        )
+        
+        # If both are empty, extract from aligned_pairs
+        if is_policy_def_empty and is_provider_manual_def_empty:
             aligned_pairs = payload.get("aligned_pairs", [])
             if aligned_pairs and isinstance(aligned_pairs, list) and len(aligned_pairs) > 0:
-                first_pair = aligned_pairs[0]
-                if isinstance(first_pair, dict):
-                    policy_def = first_pair.get("policy_update", "") or first_pair.get("policy_definition", "")
-                    provider_manual_def = first_pair.get("provider_manual", "") or first_pair.get("provider_manual_definition", "")
+                policy_updates = []
+                provider_manuals = []
+                
+                for pair in aligned_pairs:
+                    if isinstance(pair, dict):
+                        policy_update = pair.get("policy_update", "").strip()
+                        provider_manual = pair.get("provider_manual", "").strip()
+                        
+                        if policy_update:
+                            policy_updates.append(policy_update)
+                        if provider_manual:
+                            provider_manuals.append(provider_manual)
+                
+                # Concatenate multiple entries with newlines for readability
+                policy_def = "\n\n".join(policy_updates) if policy_updates else ""
+                provider_manual_def = "\n\n".join(provider_manuals) if provider_manuals else ""
 
         sections = {
             "headline_summary": str(payload.get("headline_summary", "")).strip(),
