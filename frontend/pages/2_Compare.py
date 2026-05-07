@@ -596,9 +596,17 @@ def _build_recency_summary(retrieved_docs_grouped):
 
     if policy_date and provider_date:
         if policy_date > provider_date:
-            parts.append("Overall, the policy source is more up to date and should carry more weight for current guidance.")
+            parts.append(
+                "Overall, the policy source is more up to date. The model will usually "
+                "emphasize the more recent source, but the newest source may not always "
+                "directly answer the question on its own."
+            )
         elif provider_date > policy_date:
-            parts.append("Overall, the provider manual source is more up to date and should carry more weight for current guidance.")
+            parts.append(
+                "Overall, the provider manual source is more up to date. The model will "
+                "usually emphasize the more recent source, but the newest source may not "
+                "always directly answer the question on its own."
+            )
         else:
             parts.append("Overall, the newest policy and provider manual sources are tied on effective date.")
     else:
