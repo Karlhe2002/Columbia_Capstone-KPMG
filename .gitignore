@@ -49,3 +49,5 @@ docker/neo4j_logs/
 docker/neo4j_plugins/
 HOW_TO_RUN.md
 MuWork.md
+
+*.yaml
