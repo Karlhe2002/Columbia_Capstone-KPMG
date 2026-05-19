@@ -266,3 +266,48 @@ This ensures responses are grounded, traceable, and suitable for regulated healt
 - `anthropic` provider listed in `configs/api_config.yaml` but not implemented in `LLMClient`
 - `ollama` works in `LLMClient` but is not registered in `api_config.yaml`
 - Sparse retrieval is Cypher lexical scoring, not BM25 or stored sparse vectors — upgrading to a real full-text / BM25 index (or persisting BGE-M3 sparse vectors) is a natural next step
+
+## Point-to-Point (P2P) Experiment Branches
+
+> **TL;DR — the canonical, best-performing pipeline lives on `main`.** The `*-point-to-point` branches are exploratory variants of the **Compare Definitions** flow only, kept around for evaluation studies. They are not deployment targets.
+
+### What "point-to-point" means here
+
+Point-to-point is **not** a different retrieval engine or a separate evaluation harness. It is a reworked **Compare Definitions answering pattern** that turns the single-shot policy-vs-provider-manual answer into a **two-stage, row-aligned** LLM workflow:
+
+1. **Retrieve** policy chunks and provider-manual chunks separately (same dual `doc_classes` filter as main).
+2. **Row Planner LLM** (`generate_compare_row_plan` + `_normalize_compare_row_plan`) — decomposes the question into 2–3 operational sub-questions, then for **each row picks exactly one provider-manual chunk and one policy chunk that answer the same sub-question**. A deterministic normalizer dedupes and enforces the 1-to-1 pairing.
+3. **Writer LLM** (`write_compare_from_row_plan`) — uses the approved plan plus the row generator's system prompt (`configs/system_prompt_compare_row_generator.txt` + a writer-mode `system_prompt_compare.txt`) to emit `aligned_pairs` (side-by-side rows), `similarities`, `differences`, and `caveats`.
+
+Key files (only present on the p2p branches): `generate_compare_row_plan` / `write_compare_from_row_plan` / `_normalize_compare_row_plan` in `src/healthcare_rag_llm/llm/response_generator.py`, the new planner prompt `configs/system_prompt_compare_row_generator.txt`, and the row-aligned UI in `frontend/pages/2_Compare.py` (`format_compare_tables`, `format_compare_debug`, Stop/Cancel controls).
+
+### How it differs from `main`
+
+| Aspect | `main` (canonical) | `*-point-to-point` (experimental) |
+|---|---|---|
+| Compare LLM calls | **1** single-shot | **2** — planner + writer |
+| Output schema | `policy_definition` / `provider_manual_definition` blocks | `aligned_pairs` row table + `caveats` (legacy keys left empty) |
+| Compare prompt | `configs/system_prompt_compare.txt` (full compare assistant) | Same file rewritten as **writer** + new **planner** prompt |
+| Compare UI | Two definition columns | Provider-Manual ↔ Policy table, expandable planner/writer debug, Stop button |
+| Q&A flow | Hybrid retrieval, dense+sparse+RRF, theme-aware filters | Same as main on `dense-sparse-point-to-point`; dense-only on the other two |
+| Test runners | `generate_test_result_comparison_streamlit.py` (current) | Removed / renamed (e.g. `gernerate_test_result_compare.py` on `theme-aware-point-to-point`) |
+
+### Variants
+
+All three p2p branches share the same planner/writer framework. They differ only in the **retrieval + query-understanding stack** plugged underneath:
+
+- **`dense-sparse-point-to-point`** — current hybrid (dense + sparse + RRF + rerank + theme-aware filter extractor) wired into the p2p planner. Closest to what `main` does today, just with the row-aligned compare output.
+- **`theme-aware-point-to-point`** — dense-only retrieval + theme-aware filter extractor; planner consumes `search_themes` only.
+- **`llm-extract-point-to-point`** — dense-only baseline without `themes` / `search_themes`; the planner receives no theme hints.
+
+Per-variant test artifacts live in `data/test_results/comparison_*_{dense_sparse,theme_aware,llm_extract}_p2p.json` (all three sets have been copied onto `dense-sparse-point-to-point` so they can be diffed side by side).
+
+### Why we still keep them
+
+- Side-by-side **compare-UX A/B**: row-aligned answers vs the monolithic per-source definitions on `main`.
+- **Retrieval ablation under a fixed answering pattern**: dense+sparse vs dense+themes vs dense+llm-extract, with everything else held equal.
+- Engineering experiments — async generation cancel, planner/writer debug transparency, chunk-edge text sanitization — that may later be cherry-picked into `main`.
+
+### Bottom line
+
+Production work, the latest documentation, the maintained test runners, and the most up-to-date retrieval defaults all live on **`main`**. Treat the `*-point-to-point` branches as **archived experiments**; consult them when you need their compare artifacts or want to revisit the row-aligned UX, but do not deploy from them.
